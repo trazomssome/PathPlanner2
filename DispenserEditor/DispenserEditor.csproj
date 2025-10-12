@@ -77,6 +77,21 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Converters\EnumToBooleanConverter.cs" />
+    <Compile Include="Converters\OffsetConverter.cs" />
+    <Compile Include="Converters\ReferenceEqualsConverter.cs" />
+    <Compile Include="Models\CoordinateType.cs" />
+    <Compile Include="Models\DispenseRecipe.cs" />
+    <Compile Include="Models\IntegratedRecipe.cs" />
+    <Compile Include="Models\PathCoordinate.cs" />
+    <Compile Include="Services\RecipePersistenceService.cs" />
+    <Compile Include="Services\UndoRedoService.cs" />
+    <Compile Include="ViewModels\EditorMode.cs" />
+    <Compile Include="ViewModels\LineSegmentViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\ObservableObject.cs" />
+    <Compile Include="ViewModels\PathCoordinateViewModel.cs" />
+    <Compile Include="ViewModels\RelayCommand.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -103,6 +118,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
