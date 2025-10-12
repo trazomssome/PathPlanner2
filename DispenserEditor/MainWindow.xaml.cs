@@ -582,6 +582,10 @@ namespace DispenserEditor
         {
             _isDraggingCrosshair = false;
             _crosshairChanged = false;
+            if (_viewModel.CurrentMode != DrawingMode.Move)
+            {
+                return false;
+            }
             if (!TryStartCrosshairDrag(canvasPosition))
             {
                 return false;
@@ -694,12 +698,14 @@ namespace DispenserEditor
 
         private void OnCanvasMouseMove(object sender, MouseEventArgs e)
         {
+            var position = e.GetPosition(DrawingCanvas);
+            UpdateMousePositionIndicator(position);
+
             if (!_isDragging)
             {
                 return;
             }
 
-            var position = e.GetPosition(DrawingCanvas);
             if (_isDraggingCrosshair)
             {
                 DragCrosshair(position);
@@ -719,6 +725,11 @@ namespace DispenserEditor
                 _draggingPoint.Y = modelPoint.Y;
                 _dragChanged = true;
             }
+        }
+
+        private void OnCanvasMouseLeave(object sender, MouseEventArgs e)
+        {
+            MousePositionPopup.Visibility = Visibility.Collapsed;
         }
 
         private void OnCanvasLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -819,6 +830,60 @@ namespace DispenserEditor
             }
 
             return null;
+        }
+
+        private void UpdateMousePositionIndicator(Point canvasPosition)
+        {
+            if (MousePositionPopup == null || MousePositionText == null)
+            {
+                return;
+            }
+
+            var canvasWidth = DrawingCanvas.ActualWidth;
+            var canvasHeight = DrawingCanvas.ActualHeight;
+
+            if (canvasWidth <= 0 || canvasHeight <= 0 ||
+                double.IsNaN(canvasPosition.X) || double.IsNaN(canvasPosition.Y) ||
+                canvasPosition.X < 0 || canvasPosition.Y < 0 ||
+                canvasPosition.X > canvasWidth || canvasPosition.Y > canvasHeight)
+            {
+                MousePositionPopup.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var modelPoint = ToModel(canvasPosition);
+            MousePositionText.Text = $"X: {modelPoint.X:F3}  Y: {modelPoint.Y:F3}";
+
+            MousePositionPopup.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var desiredSize = MousePositionPopup.DesiredSize;
+            const double offset = 12;
+
+            var left = canvasPosition.X + offset;
+            var top = canvasPosition.Y + offset;
+
+            if (!double.IsNaN(desiredSize.Width) && left + desiredSize.Width > canvasWidth)
+            {
+                left = canvasPosition.X - desiredSize.Width - offset;
+            }
+
+            if (!double.IsNaN(desiredSize.Height) && top + desiredSize.Height > canvasHeight)
+            {
+                top = canvasPosition.Y - desiredSize.Height - offset;
+            }
+
+            if (double.IsNaN(left) || double.IsInfinity(left))
+            {
+                left = 0;
+            }
+
+            if (double.IsNaN(top) || double.IsInfinity(top))
+            {
+                top = 0;
+            }
+
+            Canvas.SetLeft(MousePositionPopup, Math.Max(0, left));
+            Canvas.SetTop(MousePositionPopup, Math.Max(0, top));
+            MousePositionPopup.Visibility = Visibility.Visible;
         }
 
         private static double DistanceToSegment(Point p, Point a, Point b)
