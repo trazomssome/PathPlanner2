@@ -663,6 +663,7 @@ namespace DispensePath
         public EventHandler<EvenMousePosArgs> EventMouseClicked;
         public EventHandler<PositionEventArgs> EventPositionClicked;
         public event EventHandler<PointAddedEventArgs> PointAdded; // [2025-8-26] PointAdded
+        public event EventHandler<EventArgs> RecipeChanged;
 
         [XmlIgnore, Browsable(false)]
         public string Position { get; set; } = "";
@@ -846,6 +847,11 @@ namespace DispensePath
 
         public DrawToolType ActiveTool { get; set; } = DrawToolType.Pointer;
 
+        private void RaiseRecipeChanged()
+        {
+            RecipeChanged?.Invoke(this, EventArgs.Empty);
+        }
+
         public EditDispensePath(string equipmentName)
         {
             InitializeComponent();
@@ -971,6 +977,7 @@ namespace DispensePath
                     _polyTemp = null;
                     _isDrawingPolyline = false;
                     RedrawComposite();
+                    RaiseRecipeChanged();
                     e.Handled = true;
                 }
             }
@@ -1301,6 +1308,7 @@ namespace DispensePath
                         _polyTemp = null;
                         _isDrawingPolyline = false;
                         RedrawComposite();
+                        RaiseRecipeChanged();
                     }
                 }
             }
@@ -1319,6 +1327,8 @@ namespace DispensePath
                         Position = _mouse,
                         Tool = DrawToolType.AddPoint
                     });
+
+                    RaiseRecipeChanged();
 
                     RedrawComposite(); // ← 여기서도 즉시 합성
                     return;
@@ -1418,6 +1428,7 @@ namespace DispensePath
                 _polyTemp = null;
                 _isDrawingPolyline = false;
                 RedrawComposite();
+                RaiseRecipeChanged();
             }
         }
     }

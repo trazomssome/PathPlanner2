@@ -1,0 +1,141 @@
+<UserControl x:Class="DispenserEditor.Views.DispensePathView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:DispenserEditor.Controls"
+             mc:Ignorable="d"
+             d:DesignHeight="800" d:DesignWidth="1200">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="2*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.ColumnSpan="2" Margin="0,0,0,8" Background="#F5F5F5" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4">
+            <StackPanel Orientation="Horizontal" Margin="12,8">
+                <TextBlock Text="Tool:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,8,0"/>
+                <Button Content="Pointer" Command="{Binding PointerToolCommand}" Margin="0,0,8,0"/>
+                <Button Content="Add Point" Command="{Binding AddPointToolCommand}" Margin="0,0,8,0"/>
+                <Button Content="Polyline" Command="{Binding PolylineToolCommand}" Margin="0,0,16,0"/>
+                <Button Content="Zoom In" Command="{Binding ZoomInCommand}" Margin="0,0,8,0"/>
+                <Button Content="Zoom Out" Command="{Binding ZoomOutCommand}" Margin="0,0,8,0"/>
+                <Button Content="Zoom Fit" Command="{Binding ZoomFitCommand}" Margin="0,0,16,0"/>
+                <Button Content="Undo" Command="{Binding UndoCommand}" Margin="0,0,8,0"/>
+                <Button Content="Redo" Command="{Binding RedoCommand}" Margin="0,0,16,0"/>
+                <Button Content="Load Image" Command="{Binding LoadImageCommand}" Margin="0,0,8,0"/>
+                <Button Content="Load Test Image" Command="{Binding LoadTestImageCommand}" Margin="0,0,8,0"/>
+                <Button Content="Clear" Command="{Binding ClearCommand}"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Margin="0,0,8,0" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4">
+            <controls:DispensePathEditorHost x:Name="EditorHost" />
+        </Border>
+
+        <Grid Grid.Row="1" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <DataGrid Grid.Row="0"
+                      ItemsSource="{Binding Points}" SelectedItem="{Binding SelectedPoint, Mode=TwoWay}"
+                      AutoGenerateColumns="False" IsReadOnly="True" Margin="0,0,0,8" HeadersVisibility="Column"
+                      SelectionMode="Single" CanUserAddRows="False" CanUserDeleteRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="SizeToHeader"/>
+                    <DataGridTextColumn Header="X" Binding="{Binding X, StringFormat=F3}" Width="*"/>
+                    <DataGridTextColumn Header="Y" Binding="{Binding Y, StringFormat=F3}" Width="*"/>
+                    <DataGridTextColumn Header="Type" Binding="{Binding ToolName}" Width="*"/>
+                    <DataGridTextColumn Header="Order" Binding="{Binding Polyline.Order}" Width="SizeToCells"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <GroupBox Header="Start Parameters" Margin="0,0,0,8" Grid.Row="1">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Open (ms)" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Margin="6,0" Width="80"
+                             Text="{Binding StartOpenTime, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding CanEditStartParameters}"/>
+                    <TextBlock Grid.Column="2" Text="Close (ms)" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="3" Margin="6,0" Width="80"
+                             Text="{Binding StartCloseTime, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding CanEditStartParameters}"/>
+                    <TextBlock Grid.Column="4" Text="Pulse" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="5" Margin="6,0" Width="80"
+                             Text="{Binding StartNumOfPulse, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding CanEditStartParameters}"/>
+                    <Button Grid.Column="6" Content="Apply" Command="{Binding ApplyStartParametersCommand}" Margin="12,0,0,0" Width="80"/>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Recipe" Grid.Row="2" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Recipe" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Margin="6,0" Text="{Binding RecipeName, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Column="2" Content="Load" Command="{Binding LoadRecipeCommand}" Margin="6,0" Width="70"/>
+                    <Button Grid.Column="3" Content="Save" Command="{Binding SaveRecipeCommand}" Margin="6,0" Width="70"/>
+                    <TextBlock Grid.Column="4" Text="Pixel X" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBox Grid.Column="5" Margin="6,0" Width="80" Text="{Binding PixelSizeX, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Grid.Column="6" Text="Pixel Y" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBox Grid.Column="7" Margin="6,0" Width="80" Text="{Binding PixelSizeY, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <TextBlock Grid.Row="1" Text="Background" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="6" Margin="6,4,0,0" Text="{Binding BackgroundImagePath}" IsReadOnly="True"/>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Alignment Test" Grid.Row="3">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="dX" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Margin="6,0" Width="80" Text="{Binding Dx, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Grid.Column="2" Text="dY" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="3" Margin="6,0" Width="80" Text="{Binding Dy, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Grid.Column="4" Text="Theta" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="5" Margin="6,0" Width="80" Text="{Binding Theta, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Column="6" Content="Apply" Command="{Binding AlignmentTestCommand}" Margin="12,0,0,0" Width="80"/>
+                </Grid>
+            </GroupBox>
+        </Grid>
+    </Grid>
+</UserControl>
