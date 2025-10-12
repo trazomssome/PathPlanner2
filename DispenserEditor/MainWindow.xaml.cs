@@ -218,9 +218,55 @@ namespace DispenserEditor
             }
         }
 
+        private double GetScale()
+        {
+            var pixelsPerMillimetre = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+
+            var canvasWidth = DrawingCanvas.ActualWidth;
+            var canvasHeight = DrawingCanvas.ActualHeight;
+            var imageWidth = _viewModel.ImageWidth;
+            var imageHeight = _viewModel.ImageHeight;
+
+            var hasCanvasWidth = !double.IsNaN(canvasWidth) && canvasWidth > 0;
+            var hasCanvasHeight = !double.IsNaN(canvasHeight) && canvasHeight > 0;
+            var hasImageWidth = !double.IsNaN(imageWidth) && imageWidth > 0;
+            var hasImageHeight = !double.IsNaN(imageHeight) && imageHeight > 0;
+
+            var scaleFactor = 1.0;
+
+            if (hasCanvasWidth && hasImageWidth && hasCanvasHeight && hasImageHeight)
+            {
+                var widthScale = canvasWidth / imageWidth;
+                var heightScale = canvasHeight / imageHeight;
+                if (!double.IsNaN(widthScale) && !double.IsInfinity(widthScale) &&
+                    !double.IsNaN(heightScale) && !double.IsInfinity(heightScale))
+                {
+                    scaleFactor = (widthScale + heightScale) / 2.0;
+                }
+            }
+            else if (hasCanvasWidth && hasImageWidth)
+            {
+                var widthScale = canvasWidth / imageWidth;
+                if (!double.IsNaN(widthScale) && !double.IsInfinity(widthScale))
+                {
+                    scaleFactor = widthScale;
+                }
+            }
+            else if (hasCanvasHeight && hasImageHeight)
+            {
+                var heightScale = canvasHeight / imageHeight;
+                if (!double.IsNaN(heightScale) && !double.IsInfinity(heightScale))
+                {
+                    scaleFactor = heightScale;
+                }
+            }
+
+            return pixelsPerMillimetre * scaleFactor;
+        }
+
         private Point ToCanvas(PathPoint point)
         {
-            var scale = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+            var scale = GetScale();
             var x = DrawingCanvas.ActualWidth / 2 + point.X * scale;
             var y = DrawingCanvas.ActualHeight / 2 + point.Y * scale;
             return new Point(x, y);
@@ -228,7 +274,7 @@ namespace DispenserEditor
 
         private Point ToModel(Point canvasPoint)
         {
-            var scale = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+            var scale = GetScale();
             var x = (canvasPoint.X - DrawingCanvas.ActualWidth / 2) / scale;
             var y = (canvasPoint.Y - DrawingCanvas.ActualHeight / 2) / scale;
             return new Point(Math.Round(x, 3), Math.Round(y, 3));
