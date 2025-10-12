@@ -8,6 +8,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using DispenserEditor.Models;
 using DispenserEditor.ViewModels;
 
@@ -61,11 +62,16 @@ namespace DispenserEditor
         private void OnRecipePropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(PathRecipe.OverlayOpacity) ||
-                e.PropertyName == nameof(PathRecipe.PixelsPerMillimetre) ||
-                e.PropertyName == nameof(PathRecipe.CenterX) ||
-                e.PropertyName == nameof(PathRecipe.CenterY))
+                e.PropertyName == nameof(PathRecipe.PixelsPerMillimetre))
             {
                 RenderFeatures();
+                return;
+            }
+
+            if (e.PropertyName == nameof(PathRecipe.CenterX) ||
+                e.PropertyName == nameof(PathRecipe.CenterY))
+            {
+                Dispatcher.BeginInvoke(new Action(RenderFeatures), DispatcherPriority.Render);
             }
         }
 
