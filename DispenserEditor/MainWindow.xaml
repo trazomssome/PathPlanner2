@@ -83,12 +83,22 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <ListBox x:Name="FeatureList"
-                             ItemsSource="{Binding Features}"
-                             SelectedItem="{Binding SelectedFeature, Mode=TwoWay}"
-                             DisplayMemberPath="Name"
-                             Margin="8"
-                             MinHeight="200" />
+                    <DataGrid x:Name="FeatureGrid"
+                              ItemsSource="{Binding FeatureEntries}"
+                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              HeadersVisibility="Column"
+                              Margin="8"
+                              MinHeight="200"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="이름" Binding="{Binding DisplayName}" Width="2*" />
+                            <DataGridTextColumn Header="타입" Binding="{Binding TypeDescription}" Width="*" />
+                            <DataGridTextColumn Header="좌표" Binding="{Binding Coordinates}" Width="3*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8">
                         <Button Content="삭제" Click="OnDeleteFeature" Margin="4,0" />
