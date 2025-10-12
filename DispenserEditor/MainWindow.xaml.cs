@@ -244,7 +244,7 @@ namespace DispenserEditor
 
             if (toggle.Tag is string tag && Enum.TryParse(tag, out DrawingMode mode))
             {
-                _viewModel.UpdateMode(mode);
+                _viewModel?.UpdateMode(mode);
                 if (mode != DrawingMode.Line)
                 {
                     _activeLineFeature = null;
