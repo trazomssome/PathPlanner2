@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DispenserEditor"
+        xmlns:fa="http://schemas.fontawesome.com/icons/"
         mc:Ignorable="d"
         Title="Path Editor" MinHeight="600" MinWidth="1024">
     <Grid>
@@ -18,24 +19,206 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ToolBar x:Name="MainToolBar" Grid.ColumnSpan="2" Padding="4" Panel.ZIndex="1">
-            <Button Content="이미지 불러오기" Click="OnLoadImage" Margin="0,0,6,0" />
+        <ToolBar x:Name="MainToolBar"
+                 Grid.ColumnSpan="2"
+                 Background="#FF1F2933"
+                 Foreground="White"
+                 Padding="6"
+                 BorderThickness="0,0,0,1"
+                 BorderBrush="#FF111820"
+                 Panel.ZIndex="1"
+                 ToolBarTray.IsLocked="True">
+            <ToolBar.Resources>
+                <SolidColorBrush x:Key="ToolbarButtonBackground" Color="#FF2E3A47" />
+                <SolidColorBrush x:Key="ToolbarButtonHoverBackground" Color="#FF3A4A5A" />
+                <SolidColorBrush x:Key="ToolbarButtonPressedBackground" Color="#FF1B262F" />
+                <SolidColorBrush x:Key="ToolbarButtonBorder" Color="#FF3E4B59" />
+
+                <Style TargetType="Button" BasedOn="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                    <Setter Property="Margin" Value="4,0" />
+                    <Setter Property="Padding" Value="10,6" />
+                    <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource ToolbarButtonHoverBackground}" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource ToolbarButtonPressedBackground}" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <Style TargetType="ToggleButton" BasedOn="{StaticResource {x:Static ToolBar.ToggleButtonStyleKey}}">
+                    <Setter Property="Margin" Value="4,0" />
+                    <Setter Property="Padding" Value="10,6" />
+                    <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="Border"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="4">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="True" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="{StaticResource ToolbarButtonHoverBackground}" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="{StaticResource ToolbarButtonPressedBackground}" />
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#FF1B5E9E" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <Style TargetType="Separator">
+                    <Setter Property="Margin" Value="8,0" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Separator">
+                                <Border Width="1"
+                                        Margin="4,2"
+                                        Background="#FF2C3A46" />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                    <Setter Property="Margin" Value="8,0,4,0" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Style>
+
+                <Style TargetType="fa:IconBlock">
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Width" Value="16" />
+                    <Setter Property="Height" Value="16" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+
+                <Style TargetType="TextBox">
+                    <Setter Property="Margin" Value="4,0" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                    <Setter Property="MinWidth" Value="60" />
+                </Style>
+
+                <Style TargetType="Slider">
+                    <Setter Property="Margin" Value="4,0" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                    <Setter Property="Width" Value="140" />
+                </Style>
+            </ToolBar.Resources>
+
+            <Button Click="OnLoadImage">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="Image" Margin="0,0,6,0" />
+                    <TextBlock Text="이미지 불러오기" Margin="0" />
+                </StackPanel>
+            </Button>
+
             <Separator />
-            <ToggleButton Content="이동" Tag="Move" Margin="6,0" IsChecked="True" Checked="OnModeChanged" />
-            <ToggleButton Content="선" Tag="Line" Margin="6,0" Checked="OnModeChanged" />
-            <ToggleButton Content="점" Tag="Point" Margin="6,0" Checked="OnModeChanged" />
+
+            <ToggleButton Tag="Move" IsChecked="True" Checked="OnModeChanged">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="ArrowsUpDownLeftRight" Margin="0,0,6,0" />
+                    <TextBlock Text="이동" Margin="0" />
+                </StackPanel>
+            </ToggleButton>
+            <ToggleButton Tag="Line" Checked="OnModeChanged">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="Pen" Margin="0,0,6,0" />
+                    <TextBlock Text="선" Margin="0" />
+                </StackPanel>
+            </ToggleButton>
+            <ToggleButton Tag="Point" Checked="OnModeChanged">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="LocationCrosshairs" Margin="0,0,6,0" />
+                    <TextBlock Text="점" Margin="0" />
+                </StackPanel>
+            </ToggleButton>
+
             <Separator />
-            <Button Content="Undo" Click="OnUndo" Margin="6,0" />
-            <Button Content="Redo" Click="OnRedo" Margin="6,0" />
+
+            <Button Click="OnUndo">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="ArrowRotateLeft" Margin="0,0,6,0" />
+                    <TextBlock Text="Undo" Margin="0" />
+                </StackPanel>
+            </Button>
+            <Button Click="OnRedo">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="ArrowRotateRight" Margin="0,0,6,0" />
+                    <TextBlock Text="Redo" Margin="0" />
+                </StackPanel>
+            </Button>
+
             <Separator />
-            <Button Content="Import" Click="OnImport" Margin="6,0" />
-            <Button Content="Export" Click="OnExport" Margin="6,0" />
+
+            <Button Click="OnImport">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="FileImport" Margin="0,0,6,0" />
+                    <TextBlock Text="Import" Margin="0" />
+                </StackPanel>
+            </Button>
+            <Button Click="OnExport">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="FileExport" Margin="0,0,6,0" />
+                    <TextBlock Text="Export" Margin="0" />
+                </StackPanel>
+            </Button>
+
             <Separator />
-            <TextBlock Text="픽셀/mm:" VerticalAlignment="Center" Margin="8,0,4,0" />
-            <TextBox Width="60" Text="{Binding Recipe.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Text="투명도:" VerticalAlignment="Center" Margin="8,0,4,0" />
-            <Slider Width="120" Minimum="0" Maximum="1" Value="{Binding Recipe.OverlayOpacity, Mode=TwoWay}" />
-            <Button Content="기본 배율" Click="OnResetZoom" Margin="12,0,0,0" />
+
+            <TextBlock Text="픽셀/mm:" />
+            <TextBox Text="{Binding Recipe.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Text="투명도:" />
+            <Slider Minimum="0" Maximum="1" Value="{Binding Recipe.OverlayOpacity, Mode=TwoWay}" />
+            <Button Click="OnResetZoom" Margin="8,0,0,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="MagnifyingGlassMinus" Margin="0,0,6,0" />
+                    <TextBlock Text="기본 배율" Margin="0" />
+                </StackPanel>
+            </Button>
         </ToolBar>
 
         <Grid Grid.Row="1" Grid.Column="0" Margin="8">
