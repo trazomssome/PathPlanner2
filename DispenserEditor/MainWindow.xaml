@@ -40,9 +40,16 @@
         <Grid Grid.Row="1" Grid.Column="0" Margin="8">
             <Border BorderBrush="Gray" BorderThickness="1" Background="Black">
                 <Grid>
-                    <Image x:Name="ReferenceImage" Source="{Binding ReferenceImage}" Stretch="Uniform" SizeChanged="OnReferenceImageSizeChanged" />
+                    <Image x:Name="ReferenceImage"
+                           Source="{Binding ReferenceImage}"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           SizeChanged="OnReferenceImageSizeChanged" />
                     <Canvas x:Name="DrawingCanvas"
                             Background="Transparent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
                             ClipToBounds="True"
                             MouseLeftButtonDown="OnCanvasLeftButtonDown"
                             MouseRightButtonDown="OnCanvasRightButtonDown"
