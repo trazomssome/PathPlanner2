@@ -96,18 +96,12 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="이름" Binding="{Binding DisplayName}" Width="2*" IsReadOnly="True" />
                             <DataGridTextColumn Header="타입" Binding="{Binding TypeDescription}" Width="*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="시작 X"
+                            <DataGridTextColumn Header="X"
                                                 Width="*"
-                                                Binding="{Binding StartX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="시작 Y"
+                                                Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Y"
                                                 Width="*"
-                                                Binding="{Binding StartY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="끝 X"
-                                                Width="*"
-                                                Binding="{Binding EndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Header="끝 Y"
-                                                Width="*"
-                                                Binding="{Binding EndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </DataGrid.Columns>
                     </DataGrid>
 
