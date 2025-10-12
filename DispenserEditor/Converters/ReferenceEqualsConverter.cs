@@ -2,22 +2,23 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace DispenserEditor.Converters;
-
-public class ReferenceEqualsConverter : IMultiValueConverter
+namespace DispenserEditor.Converters
 {
-    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    public class ReferenceEqualsConverter : IMultiValueConverter
     {
-        if (values.Length >= 2)
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            return ReferenceEquals(values[0], values[1]);
+            if (values.Length >= 2)
+            {
+                return ReferenceEquals(values[0], values[1]);
+            }
+
+            return false;
         }
 
-        return false;
-    }
-
-    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
-    {
-        throw new NotSupportedException();
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

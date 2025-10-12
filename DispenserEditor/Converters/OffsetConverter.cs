@@ -2,27 +2,28 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace DispenserEditor.Converters;
-
-public class OffsetConverter : IValueConverter
+namespace DispenserEditor.Converters
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public class OffsetConverter : IValueConverter
     {
-        if (value is double number)
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (parameter is string parameterString && double.TryParse(parameterString, out var offset))
+            if (value is double number)
             {
-                return number + offset;
+                if (parameter is string parameterString && double.TryParse(parameterString, out var offset))
+                {
+                    return number + offset;
+                }
+
+                return number;
             }
 
-            return number;
+            return 0d;
         }
 
-        return 0d;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotSupportedException();
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

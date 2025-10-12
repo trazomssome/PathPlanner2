@@ -2,32 +2,36 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace DispenserEditor.Converters;
-
-public class EnumToBooleanConverter : IValueConverter
+namespace DispenserEditor.Converters
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public class EnumToBooleanConverter : IValueConverter
     {
-        if (value == null || parameter == null)
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return false;
+            if (value == null || parameter == null)
+            {
+                return false;
+            }
+
+            return value.ToString()?.Equals(parameter.ToString()) == true;
         }
 
-        return value.ToString()?.Equals(parameter.ToString()) == true;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (parameter == null)
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            if (parameter == null)
+            {
+                return Binding.DoNothing;
+            }
+
+            if (value is bool isChecked && isChecked)
+            {
+                return Enum.Parse(targetType, parameter.ToString());
+            }
+
             return Binding.DoNothing;
         }
-
-        if (value is bool isChecked && isChecked)
-        {
-            return Enum.Parse(targetType, parameter.ToString()!);
-        }
-
-        return Binding.DoNothing;
     }
 }
+
+
+

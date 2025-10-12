@@ -1,9 +1,11 @@
-namespace DispenserEditor.ViewModels;
-
-public enum EditorMode
+namespace DispenserEditor.ViewModels
 {
-    Move,
-    Line,
-    Point,
-    Center
+    public enum EditorMode
+    {
+        Move,
+        Line,
+        Point,
+        Center
+    }
+
 }

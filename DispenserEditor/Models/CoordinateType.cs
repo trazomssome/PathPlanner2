@@ -1,7 +1,8 @@
-namespace DispenserEditor.Models;
-
-public enum CoordinateType
+namespace DispenserEditor.Models
 {
-    Point,
-    Line
+    public enum CoordinateType
+    {
+        Point,
+        Line
+    }
 }

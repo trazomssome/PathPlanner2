@@ -1,26 +1,28 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace DispenserEditor.ViewModels;
-
-public abstract class ObservableObject : INotifyPropertyChanged
+namespace DispenserEditor.ViewModels
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    public abstract class ObservableObject : INotifyPropertyChanged
     {
-        if (Equals(field, value))
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
         {
-            return false;
+            if (Equals(field, value))
+            {
+                return false;
+            }
+
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
         }
 
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }
+
