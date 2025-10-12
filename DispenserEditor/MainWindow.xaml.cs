@@ -151,30 +151,40 @@ namespace DispenserEditor
 
         private void UpdateCanvasSize()
         {
-            var width = ReferenceImage.ActualWidth;
-            var height = ReferenceImage.ActualHeight;
+            var scale = GetDisplayScale();
+            var width = _viewModel.ImageWidth * scale;
+            var height = _viewModel.ImageHeight * scale;
+
             if (width <= 0 || double.IsNaN(width))
             {
-                width = ((FrameworkElement)ReferenceImage.Parent).ActualWidth;
+                width = ReferenceImage.ActualWidth;
             }
 
             if (height <= 0 || double.IsNaN(height))
             {
-                height = ((FrameworkElement)ReferenceImage.Parent).ActualHeight;
+                height = ReferenceImage.ActualHeight;
             }
 
-            if (width <= 0 || double.IsNaN(width))
+            if ((width <= 0 || double.IsNaN(width)) && ReferenceImage.Parent is FrameworkElement parent)
             {
-                width = _viewModel.ImageWidth * GetDisplayScale();
+                width = parent.ActualWidth;
             }
 
-            if (height <= 0 || double.IsNaN(height))
+            if ((height <= 0 || double.IsNaN(height)) && ReferenceImage.Parent is FrameworkElement parentElement)
             {
-                height = _viewModel.ImageHeight * GetDisplayScale();
+                height = parentElement.ActualHeight;
             }
 
-            DrawingCanvas.Width = width;
-            DrawingCanvas.Height = height;
+            if (width > 0 && !double.IsNaN(width))
+            {
+                DrawingCanvas.Width = width;
+            }
+
+            if (height > 0 && !double.IsNaN(height))
+            {
+                DrawingCanvas.Height = height;
+            }
+
             RenderFeatures();
         }
 
@@ -256,12 +266,15 @@ namespace DispenserEditor
 
         private void DrawCrosshair(Point origin)
         {
+            var canvasWidth = GetCanvasWidth();
+            var canvasHeight = GetCanvasHeight();
+
             var vertical = new Line
             {
                 X1 = origin.X,
                 X2 = origin.X,
                 Y1 = 0,
-                Y2 = DrawingCanvas.ActualHeight,
+                Y2 = canvasHeight,
                 Stroke = Brushes.LightGray,
                 StrokeThickness = 1,
                 StrokeDashArray = new DoubleCollection { 4, 4 },
@@ -273,7 +286,7 @@ namespace DispenserEditor
                 Y1 = origin.Y,
                 Y2 = origin.Y,
                 X1 = 0,
-                X2 = DrawingCanvas.ActualWidth,
+                X2 = canvasWidth,
                 Stroke = Brushes.LightGray,
                 StrokeThickness = 1,
                 StrokeDashArray = new DoubleCollection { 4, 4 },
@@ -307,7 +320,7 @@ namespace DispenserEditor
         {
             var targetOrigin = canvasPosition - _crosshairDragOffset;
             var scale = GetScale();
-            var canvasCenter = new Point(DrawingCanvas.ActualWidth / 2, DrawingCanvas.ActualHeight / 2);
+            var canvasCenter = new Point(GetCanvasWidth() / 2, GetCanvasHeight() / 2);
             var centerX = (canvasCenter.X - targetOrigin.X) / scale;
             var centerY = (canvasCenter.Y - targetOrigin.Y) / scale;
 
@@ -368,9 +381,65 @@ namespace DispenserEditor
 
         private Point GetOrigin(double scale)
         {
-            var x = DrawingCanvas.ActualWidth / 2 - _viewModel.AppliedCenterX * scale;
-            var y = DrawingCanvas.ActualHeight / 2 - _viewModel.AppliedCenterY * scale;
+            var x = GetCanvasWidth() / 2 - _viewModel.AppliedCenterX * scale;
+            var y = GetCanvasHeight() / 2 - _viewModel.AppliedCenterY * scale;
             return new Point(x, y);
+        }
+
+        private double GetCanvasWidth()
+        {
+            var width = DrawingCanvas.ActualWidth;
+            if (width > 0 && !double.IsNaN(width))
+            {
+                return width;
+            }
+
+            width = DrawingCanvas.Width;
+            if (width > 0 && !double.IsNaN(width))
+            {
+                return width;
+            }
+
+            width = ReferenceImage.ActualWidth;
+            if (width > 0 && !double.IsNaN(width))
+            {
+                return width;
+            }
+
+            if (ReferenceImage.Parent is FrameworkElement parent)
+            {
+                width = parent.ActualWidth;
+            }
+
+            return width;
+        }
+
+        private double GetCanvasHeight()
+        {
+            var height = DrawingCanvas.ActualHeight;
+            if (height > 0 && !double.IsNaN(height))
+            {
+                return height;
+            }
+
+            height = DrawingCanvas.Height;
+            if (height > 0 && !double.IsNaN(height))
+            {
+                return height;
+            }
+
+            height = ReferenceImage.ActualHeight;
+            if (height > 0 && !double.IsNaN(height))
+            {
+                return height;
+            }
+
+            if (ReferenceImage.Parent is FrameworkElement parent)
+            {
+                height = parent.ActualHeight;
+            }
+
+            return height;
         }
 
         private void OnModeChanged(object sender, RoutedEventArgs e)
