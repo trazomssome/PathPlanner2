@@ -20,6 +20,9 @@ namespace DispenserEditor
         private PathPoint _draggingPoint = null;
         private bool _isDragging;
         private bool _dragChanged;
+        private bool _isDraggingCrosshair;
+        private Vector _crosshairDragOffset;
+        private bool _crosshairChanged;
 
         public MainWindow()
         {
@@ -271,6 +274,43 @@ namespace DispenserEditor
             DrawingCanvas.Children.Add(horizontal);
         }
 
+        private bool TryStartCrosshairDrag(Point canvasPosition)
+        {
+            var scale = GetScale();
+            var origin = GetOrigin(scale);
+            const double threshold = 10;
+
+            var distanceToVertical = Math.Abs(canvasPosition.X - origin.X);
+            var distanceToHorizontal = Math.Abs(canvasPosition.Y - origin.Y);
+
+            if (distanceToVertical <= threshold || distanceToHorizontal <= threshold)
+            {
+                _isDraggingCrosshair = true;
+                _crosshairDragOffset = canvasPosition - origin;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void DragCrosshair(Point canvasPosition)
+        {
+            var targetOrigin = canvasPosition - _crosshairDragOffset;
+            var scale = GetScale();
+            var canvasCenter = new Point(DrawingCanvas.ActualWidth / 2, DrawingCanvas.ActualHeight / 2);
+            var centerX = (canvasCenter.X - targetOrigin.X) / scale;
+            var centerY = (canvasCenter.Y - targetOrigin.Y) / scale;
+
+            if (Math.Abs(centerX - _viewModel.AppliedCenterX) < double.Epsilon &&
+                Math.Abs(centerY - _viewModel.AppliedCenterY) < double.Epsilon)
+            {
+                return;
+            }
+
+            _crosshairChanged = true;
+            _viewModel.SetCenter(centerX, centerY, commit: false, updateStatus: false);
+        }
+
         private double GetScale()
         {
             return Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
@@ -309,9 +349,30 @@ namespace DispenserEditor
             }
         }
 
+        private bool TryBeginCrosshairDrag(Point canvasPosition)
+        {
+            _isDraggingCrosshair = false;
+            _crosshairChanged = false;
+            if (!TryStartCrosshairDrag(canvasPosition))
+            {
+                return false;
+            }
+
+            _draggingPoint = null;
+            _isDragging = true;
+            _dragChanged = false;
+            DrawingCanvas.CaptureMouse();
+            return true;
+        }
+
         private void OnCanvasLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             var position = e.GetPosition(DrawingCanvas);
+            if (TryBeginCrosshairDrag(position))
+            {
+                return;
+            }
+
             switch (_viewModel.CurrentMode)
             {
                 case DrawingMode.Point:
@@ -379,6 +440,8 @@ namespace DispenserEditor
         private void BeginDrag(Point canvasPosition)
         {
             _activeLineFeature = null;
+            _draggingPoint = null;
+            _isDraggingCrosshair = false;
             PathFeature feature;
             PathPoint point;
             if (TryFindPoint(canvasPosition, 12, out feature, out point))
@@ -402,12 +465,23 @@ namespace DispenserEditor
 
         private void OnCanvasMouseMove(object sender, MouseEventArgs e)
         {
-            if (!_isDragging || _draggingPoint == null)
+            if (!_isDragging)
             {
                 return;
             }
 
             var position = e.GetPosition(DrawingCanvas);
+            if (_isDraggingCrosshair)
+            {
+                DragCrosshair(position);
+                return;
+            }
+
+            if (_draggingPoint == null)
+            {
+                return;
+            }
+
             var modelPoint = ToModel(position);
             if (Math.Abs(_draggingPoint.X - modelPoint.X) > double.Epsilon ||
                 Math.Abs(_draggingPoint.Y - modelPoint.Y) > double.Epsilon)
@@ -424,6 +498,17 @@ namespace DispenserEditor
             {
                 DrawingCanvas.ReleaseMouseCapture();
                 _isDragging = false;
+                if (_isDraggingCrosshair)
+                {
+                    _isDraggingCrosshair = false;
+                    if (_crosshairChanged)
+                    {
+                        _viewModel.SaveSnapshot();
+                        _viewModel.StatusMessage = $"센터를 ({_viewModel.AppliedCenterX:F3}, {_viewModel.AppliedCenterY:F3})로 이동했습니다.";
+                        _crosshairChanged = false;
+                    }
+                }
+
                 _draggingPoint = null;
                 if (_dragChanged)
                 {

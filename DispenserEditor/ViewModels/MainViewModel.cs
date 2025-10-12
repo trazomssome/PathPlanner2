@@ -248,7 +248,7 @@ namespace DispenserEditor.ViewModels
             }
         }
 
-        public void SetCenter(double x, double y)
+        public void SetCenter(double x, double y, bool commit = true, bool updateStatus = true)
         {
             var deltaX = x - _appliedCenterX;
             var deltaY = y - _appliedCenterY;
@@ -264,8 +264,15 @@ namespace DispenserEditor.ViewModels
             _appliedCenterY = Recipe.CenterY;
             RaisePropertyChanged(nameof(AppliedCenterX));
             RaisePropertyChanged(nameof(AppliedCenterY));
-            SaveSnapshot();
-            StatusMessage = $"센터를 ({x:F3}, {y:F3})로 이동했습니다.";
+            if (commit)
+            {
+                SaveSnapshot();
+            }
+
+            if (updateStatus)
+            {
+                StatusMessage = $"센터를 ({x:F3}, {y:F3})로 이동했습니다.";
+            }
         }
 
         public void UpdateMode(DrawingMode mode)
