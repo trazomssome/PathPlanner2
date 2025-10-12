@@ -125,8 +125,7 @@ publish/
 *.pubxml
 
 # NuGet
-packages/*
-!packages/build/
+packages/
 
 # Windows Azure Build Output
 csx/
@@ -179,6 +178,8 @@ FakesAssemblies/
 *.local.config
 *.userprefs
 *.config
+!packages.config
+!*/packages.config
 
 # App data and cache
 App_Data/

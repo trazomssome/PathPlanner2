@@ -1,13 +1,141 @@
-﻿<Window x:Class="DispenserEditor.MainWindow"
+<Window x:Class="DispenserEditor.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DispenserEditor"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Path Editor" MinHeight="600" MinWidth="1024">
     <Grid>
-        <Grid Grid.Row="1" Grid.ColumnSpan="2">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="7*" />
+            <ColumnDefinition Width="3*" MinWidth="300" />
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ToolBar x:Name="MainToolBar" Grid.ColumnSpan="2" Padding="4">
+            <Button Content="이미지 불러오기" Click="OnLoadImage" Margin="0,0,6,0" />
+            <Separator />
+            <ToggleButton Content="이동" Tag="Move" Margin="6,0" IsChecked="True" Checked="OnModeChanged" />
+            <ToggleButton Content="선" Tag="Line" Margin="6,0" Checked="OnModeChanged" />
+            <ToggleButton Content="점" Tag="Point" Margin="6,0" Checked="OnModeChanged" />
+            <Separator />
+            <Button Content="Undo" Click="OnUndo" Margin="6,0" />
+            <Button Content="Redo" Click="OnRedo" Margin="6,0" />
+            <Separator />
+            <Button Content="Import" Click="OnImport" Margin="6,0" />
+            <Button Content="Export" Click="OnExport" Margin="6,0" />
+            <Separator />
+            <TextBlock Text="픽셀/mm:" VerticalAlignment="Center" Margin="8,0,4,0" />
+            <TextBox Width="60" Text="{Binding Recipe.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Text="투명도:" VerticalAlignment="Center" Margin="8,0,4,0" />
+            <Slider Width="120" Minimum="0" Maximum="1" Value="{Binding Recipe.OverlayOpacity, Mode=TwoWay}" />
+        </ToolBar>
+
+        <Grid Grid.Row="1" Grid.Column="0" Margin="8">
+            <Border BorderBrush="Gray" BorderThickness="1" Background="Black">
+                <Grid>
+                    <Image x:Name="ReferenceImage" Source="{Binding ReferenceImage}" Stretch="Uniform" SizeChanged="OnReferenceImageSizeChanged" />
+                    <Canvas x:Name="DrawingCanvas"
+                            Background="Transparent"
+                            ClipToBounds="True"
+                            MouseLeftButtonDown="OnCanvasLeftButtonDown"
+                            MouseRightButtonDown="OnCanvasRightButtonDown"
+                            MouseMove="OnCanvasMouseMove"
+                            MouseLeftButtonUp="OnCanvasLeftButtonUp" />
+                </Grid>
+            </Border>
         </Grid>
+
+        <Grid Grid.Row="1" Grid.Column="1" Margin="8" DataContext="{Binding}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <GroupBox Header="레시피 정보" Margin="0,0,0,8">
+                <StackPanel Orientation="Vertical" Margin="8">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="기본 속도" Width="80" VerticalAlignment="Center" />
+                        <TextBox Width="100" Text="{Binding Recipe.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="센터 X" Width="80" VerticalAlignment="Center" />
+                        <TextBox Width="100" Text="{Binding Recipe.CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="센터 Y" Width="60" Margin="12,0,0,0" VerticalAlignment="Center" />
+                        <TextBox Width="100" Text="{Binding Recipe.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="센터 적용" Margin="12,0,0,0" Click="OnApplyCenter" />
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="요소 목록" Grid.Row="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ListBox x:Name="FeatureList"
+                             ItemsSource="{Binding Features}"
+                             SelectedItem="{Binding SelectedFeature, Mode=TwoWay}"
+                             DisplayMemberPath="Name"
+                             Margin="8"
+                             MinHeight="200" />
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8">
+                        <Button Content="삭제" Click="OnDeleteFeature" Margin="4,0" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2" BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="8" Padding="8">
+                        <StackPanel>
+                            <TextBlock Text="선택된 요소" FontWeight="Bold" Margin="0,0,0,6" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="이름" Width="80" />
+                                <TextBox Text="{Binding SelectedFeature.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="타입" Width="80" />
+                                <TextBlock Text="{Binding SelectedFeature.Type}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <CheckBox Content="개별 속도 사용" IsChecked="{Binding SelectedFeature.UseCustomSpeed, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="속도" Width="80" />
+                                <TextBox Text="{Binding SelectedFeature.Speed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="가속" Width="80" />
+                                <TextBox Text="{Binding SelectedFeature.Acceleration, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="감속" Width="80" />
+                                <TextBox Text="{Binding SelectedFeature.Deceleration, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <CheckBox Content="도포" IsChecked="{Binding SelectedFeature.Dispense, Mode=TwoWay}" />
+                                <CheckBox Content="자동 스무딩" Margin="12,0,0,0" IsChecked="{Binding SelectedFeature.AutoSmoothing, Mode=TwoWay}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </GroupBox>
+
+            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
+        </Grid>
+
+        <StatusBar Grid.Row="2" Grid.ColumnSpan="2">
+            <StatusBarItem>
+                <TextBlock Text="좌표는 mm 단위 (소수 셋째 자리)" />
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>
