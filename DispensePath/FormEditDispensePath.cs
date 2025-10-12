@@ -23,6 +23,7 @@ namespace DispensePath
             public EditDispensePath.DrawToolType Tool;
             public int PolylineOrder; // pl.Order
             public int PointIndex;    // pl.Points 내 인덱스
+            public int NodeIndex = -1;
         }
 
         // 현재 “시작점 편집 중”인 대상
@@ -66,27 +67,19 @@ namespace DispensePath
             // 초기엔 비활성화
             SetStartParamEditorsEnabled(false);
 
-            _graphicEditor = new EditDispensePath(recipe_name); 
+            _graphicEditor = new EditDispensePath(recipe_name);
             _graphicEditor.Dock = DockStyle.Fill;
             _graphicEditor.Visible = true;
 
             plPathDraw.Controls.Add(_graphicEditor);
-
-            // 이벤트 구독: Grid에 행 추가
-            _graphicEditor.PointAdded += (s, e) =>
-            {
-                // 컬럼 순서: No / X / Y / DrawToolType (디자이너의 컬럼 순서 기준)
-                // 표시 포맷은 필요에 맞게 조정
-                gridGraphicNodes.Rows.Add(
-                    e.Index,
-                    e.Position.X.ToString("0.###"),
-                    e.Position.Y.ToString("0.###"),
-                    e.Tool.ToString() // "AddPoint"
-                );
-            };
+            _graphicEditor.PathContentChanged += (s, e) => RefreshGraphicGrid();
+            _graphicEditor.SelectionChanged += (s, e) => UpdateGridSelectionHighlight();
 
             gridGraphicNodes.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             gridGraphicNodes.ColumnHeadersDefaultCellStyle.Font = new Font("Arial", 15F, FontStyle.Bold);
+            gridGraphicNodes.MultiSelect = false;
+            gridGraphicNodes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridGraphicNodes.RowHeadersVisible = false;
 
             // [2025-9-29]
             gridGraphicNodes.CellClick += gridGraphicNodes_CellClick;
@@ -158,14 +151,24 @@ namespace DispensePath
                 var nodes = _graphicEditor?.Recipe_DispPoints?.Nodes;
                 if (nodes != null)
                 {
-                    foreach (var n in nodes)
+                    for (int i = 0; i < nodes.Count; i++)
                     {
+                        var n = nodes[i];
+                        var mm = _graphicEditor.Recipe_DispPoints.ToMillimeter(n.Position);
                         gridGraphicNodes.Rows.Add(
                             no++,
-                            n.Position.X.ToString("0.###"),
-                            n.Position.Y.ToString("0.###"),
+                            mm.X.ToString("0.###"),
+                            mm.Y.ToString("0.###"),
                             EditDispensePath.DrawToolType.AddPoint.ToString()  // "AddPoint"
                         );
+
+                        var row = gridGraphicNodes.Rows[gridGraphicNodes.Rows.Count - 1];
+                        row.Tag = new GridPointMeta
+                        {
+                            Tool = EditDispensePath.DrawToolType.AddPoint,
+                            NodeIndex = i,
+                            PointIndex = 0
+                        };
                     }
                 }
 
@@ -177,7 +180,7 @@ namespace DispensePath
                     {
                         for (int j = 0; j < pl.Points.Count; j++)
                         {
-                            var p = pl.Points[j];
+                            var p = _graphicEditor.Recipe_DispPoints.ToMillimeter(pl.Points[j]);
                             int rowIndex = gridGraphicNodes.Rows.Add(
                                 no++,
                                 p.X.ToString("0.###"),
@@ -192,7 +195,8 @@ namespace DispensePath
                                 IsPolylineStart = (j == 0),
                                 Tool = EditDispensePath.DrawToolType.PolyLine,
                                 PolylineOrder = pl.Order,
-                                PointIndex = j
+                                PointIndex = j,
+                                NodeIndex = -1
                             };
 
                             // 시작점이면 연한 푸른색으로 강조
@@ -205,6 +209,57 @@ namespace DispensePath
                     }
                 }
                 //    gridGraphicNodes.ClearSelection(); // 보기 깔끔하게(?)
+            }
+            finally
+            {
+                gridGraphicNodes.ResumeLayout();
+            }
+            UpdateGridSelectionHighlight();
+        }
+
+        private void UpdateGridSelectionHighlight()
+        {
+            if (gridGraphicNodes.Rows.Count == 0) return;
+
+            gridGraphicNodes.SuspendLayout();
+            try
+            {
+                gridGraphicNodes.ClearSelection();
+                int? selectedNode = _graphicEditor?.SelectedPointNodeIndex;
+                var selectedPolyline = _graphicEditor?.SelectedPolylinePoint;
+                int? firstSelectedRow = null;
+
+                foreach (DataGridViewRow row in gridGraphicNodes.Rows)
+                {
+                    if (!(row.Tag is GridPointMeta meta)) continue;
+
+                    bool isSelected = false;
+                    if (meta.Tool == EditDispensePath.DrawToolType.AddPoint && selectedNode.HasValue && meta.NodeIndex == selectedNode.Value)
+                    {
+                        isSelected = true;
+                    }
+                    else if (meta.Tool == EditDispensePath.DrawToolType.PolyLine && selectedPolyline.HasValue &&
+                             meta.PolylineOrder == selectedPolyline.Value.polylineOrder &&
+                             meta.PointIndex == selectedPolyline.Value.pointIndex)
+                    {
+                        isSelected = true;
+                    }
+
+                    row.Selected = isSelected;
+                    if (isSelected && !firstSelectedRow.HasValue)
+                    {
+                        firstSelectedRow = row.Index;
+                    }
+                }
+
+                if (firstSelectedRow.HasValue)
+                {
+                    int targetIndex = Math.Max(0, Math.Min(firstSelectedRow.Value, gridGraphicNodes.Rows.Count - 1));
+                    gridGraphicNodes.FirstDisplayedScrollingRowIndex = targetIndex;
+                }
+            }
+            catch
+            {
             }
             finally
             {
@@ -229,24 +284,32 @@ namespace DispensePath
 
             if (e.RowIndex < 0) return;
 
-            SetStartParamEditorsEnabled(false);     // 입력 비활성화
-
             var row = gridGraphicNodes.Rows[e.RowIndex];
             if (!(row?.Tag is GridPointMeta meta)) return;
 
-            // 오직 시작점 + PolyLine 만
-            if (meta.Tool != EditDispensePath.DrawToolType.PolyLine || !meta.IsPolylineStart)
+            if (meta.Tool == EditDispensePath.DrawToolType.AddPoint)
+            {
+                SetStartParamEditorsEnabled(false);
+                _graphicEditor.SelectStandalonePoint(meta.NodeIndex);
                 return;
+            }
 
-            // 대상 Polyline 찾기
+            _graphicEditor.SelectPolylinePoint(meta.PolylineOrder, meta.PointIndex);
+
+            if (!meta.IsPolylineStart)
+            {
+                SetStartParamEditorsEnabled(false);
+                return;
+            }
+
+            SetStartParamEditorsEnabled(true);
+
             var pl = _graphicEditor?.Recipe_DispPoints?.Polylines?
                 .FirstOrDefault(x => x.Order == meta.PolylineOrder);
             if (pl == null) return;
 
-            _editingStartMeta = meta;              // 편집 대상 기억
-            SetStartParamEditorsEnabled(true);     // 입력 활성화
+            _editingStartMeta = meta;
 
-            // 기존 값 로드 (없으면 0/빈값)
             tbOpenTime.Text = pl.OpenTimeMs.ToString("0.###");
             tbCloseTime.Text = pl.CloseTimeMs.ToString("0.###");
             tbNumOfPulse.Text = pl.NumOfPulse.ToString();
@@ -262,15 +325,12 @@ namespace DispensePath
 
         public void LoadParam()
         {
-            _graphicEditor.Recipe_DispPoints = _graphicEditor.Recipe_DispPoints.Load(txtRecipeName.Text);
-            //txtBackgroudImgPath.Text = _graphicEditor.Recipe_DispPoints.BackgroundImagePath;
-            tbPixelSizeX.DoubleValue = _graphicEditor.Recipe_DispPoints.PixelSizeX;
-            tbPixelSizeY.DoubleValue = _graphicEditor.Recipe_DispPoints.PixelSizeY;
+            var loaded = _graphicEditor.Recipe_DispPoints.Load(txtRecipeName.Text);
+            tbPixelSizeX.DoubleValue = loaded.PixelSizeX;
+            tbPixelSizeY.DoubleValue = loaded.PixelSizeY;
 
+            _graphicEditor.ReplaceRecipe(loaded);
             _graphicEditor.UpdateBackgroundImage();
-            _graphicEditor.Invalidate();
-
-            RefreshGraphicGrid();
         }
         private void MouseWheelEventSource(object sender, MouseEventArgs e)
         {
@@ -569,10 +629,6 @@ namespace DispensePath
                 return;
             }
 
-            var pl = _graphicEditor?.Recipe_DispPoints?.Polylines?
-                .FirstOrDefault(x => x.Order == _editingStartMeta.PolylineOrder);
-            if (pl == null) return;
-
             // 파싱/검증
             if (!double.TryParse(tbOpenTime.Text, out var openMs)) openMs = 0;
             if (!double.TryParse(tbCloseTime.Text, out var closeMs)) closeMs = 0;
@@ -583,18 +639,16 @@ namespace DispensePath
             if (closeMs < 0) closeMs = 0;
             if (pulse < 0) pulse = 0;
 
-            // 저장
-            pl.OpenTimeMs = openMs;
-            pl.CloseTimeMs = closeMs;
-            pl.NumOfPulse = pulse;
+            _graphicEditor.UpdatePolylineParameters(_editingStartMeta.PolylineOrder, polyline =>
+            {
+                polyline.OpenTimeMs = openMs;
+                polyline.CloseTimeMs = closeMs;
+                polyline.NumOfPulse = pulse;
+            });
 
-            // (선택) 저장 후 비활성/해제
-            //SetStartParamEditorsEnabled(false);
             _editingStartMeta = null;
 
-            // 필요 시 화면/그리드 갱신
-            // _graphicEditor.RedrawComposite();   // 파라미터 값이 그림에 반영된다면
-            // RefreshGraphicGrid();               // 그리드에 표시할 값이 있다면
+            // 필요 시 화면/그리드 갱신은 이벤트에서 처리
         }
 
 
@@ -666,20 +720,13 @@ namespace DispensePath
 
         private void ClearAll()
         {
-            if (_graphicEditor?.Recipe_DispPoints != null)
-            {
-                _graphicEditor.Recipe_DispPoints.Nodes.Clear();
-                //_graphicEditor.Recipe_DispPoints.Lines.Clear();
-                _graphicEditor.Recipe_DispPoints.Polylines.Clear();
-                _graphicEditor.RedrawComposite();
-            }
+            if (_graphicEditor?.Recipe_DispPoints == null) return;
 
-            // ← DataGridView도 함께 초기화
-            gridGraphicNodes.SuspendLayout();
-            gridGraphicNodes.Rows.Clear();
-            gridGraphicNodes.ClearSelection();   // 선택 표시 제거(옵션)
-            gridGraphicNodes.ResumeLayout();
-            // gridGraphicNodes.Refresh();       // 필요 시 강제 리프레시(옵션)
+            var cleared = _graphicEditor.Recipe_DispPoints.DeepClone();
+            cleared.Nodes.Clear();
+            cleared.Polylines.Clear();
+
+            _graphicEditor.ReplaceRecipe(cleared);
         }
 
         private void btnCreateParam_Click(object sender, EventArgs e)
@@ -718,29 +765,13 @@ namespace DispensePath
 
         private void operateBack(bool bBackOrForward)
         {
-            if (_graphicEditor.CommandList.Count > 50)
+            if (bBackOrForward)
             {
-                _graphicEditor.CommandList.RemoveAt(0);
+                _graphicEditor.Undo();
             }
-            if (_graphicEditor.CommandList.Count > 0)
+            else
             {
-                if (bBackOrForward && _graphicEditor.CtrlZ_Index < _graphicEditor.CommandList.Count)
-                {
-                    _graphicEditor.CtrlZ_Index++;
-                }
-                else if (!bBackOrForward && _graphicEditor.CtrlZ_Index > 0)
-                {
-                    _graphicEditor.CtrlZ_Index--;
-                }
-                else
-                    return;
-
-                int idx = _graphicEditor.CommandList.Count - _graphicEditor.CtrlZ_Index;
-
-                if (idx >= 0 && idx < _graphicEditor.CommandList.Count)
-                {
-                    _graphicEditor.SetList(_graphicEditor.CommandList[idx]);
-                }
+                _graphicEditor.Redo();
             }
         }
 

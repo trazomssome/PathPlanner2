@@ -81,18 +81,101 @@ namespace DispensePath
     // [2025-8-21]
     public class Recipe_DispensingPoints
     {
+        public const string CurrentSchemaVersion = "1.0.0";
+
         public List<DispensePointNode> Nodes { get; set; } = new List<DispensePointNode>();
         public string BackgroundImagePath { get; set; } = "";
         public double PixelSizeX { get; set; } = 0.01;
         public double PixelSizeY { get; set; } = 0.01;
-
-        // [2025-8-22]
         public List<DispensePolyline> Polylines { get; set; } = new List<DispensePolyline>();
-        //public List<DispenseLine> Lines { get; set; } = new List<DispenseLine>(); // [2025-8-26] No Use
 
+        public string SchemaVersion { get; set; } = CurrentSchemaVersion;
+        public double DefaultSpeedMmPerSec { get; set; } = 50.0;
+        public double SpeedLimitMmPerSec { get; set; } = 500.0;
+        public bool EnforceSpeedLimit { get; set; } = true;
+        public double OverlayOpacity { get; set; } = 0.7;
+        public PointF CenterOffsetMm { get; set; } = PointF.Empty;
+        public int CanvasWidthPx { get; set; }
+        public int CanvasHeightPx { get; set; }
 
         public Recipe_DispensingPoints()
         {
+        }
+
+        public void UpdateCanvasSize(int width, int height)
+        {
+            if (width <= 0 || height <= 0) return;
+            CanvasWidthPx = width;
+            CanvasHeightPx = height;
+        }
+
+        private double RoundToPrecision(double value)
+        {
+            return Math.Round(value, 3, MidpointRounding.AwayFromZero);
+        }
+
+        private double SafePixelSize(double value)
+        {
+            return Math.Abs(value) < double.Epsilon ? 1.0 : value;
+        }
+
+        public PointF GetDefaultCenterPx()
+        {
+            var width = CanvasWidthPx > 0 ? CanvasWidthPx : 0;
+            var height = CanvasHeightPx > 0 ? CanvasHeightPx : 0;
+            return new PointF(width / 2f, height / 2f);
+        }
+
+        public PointF GetCurrentCenterPx()
+        {
+            var defaultCenter = GetDefaultCenterPx();
+            double pxSizeX = SafePixelSize(PixelSizeX);
+            double pxSizeY = SafePixelSize(PixelSizeY);
+
+            float offsetX = (float)(CenterOffsetMm.X / pxSizeX);
+            float offsetY = (float)(CenterOffsetMm.Y / pxSizeY);
+            return new PointF(defaultCenter.X + offsetX, defaultCenter.Y + offsetY);
+        }
+
+        public void ApplyCenterPixel(PointF newCenterPx)
+        {
+            var defaultCenter = GetDefaultCenterPx();
+            double pxSizeX = SafePixelSize(PixelSizeX);
+            double pxSizeY = SafePixelSize(PixelSizeY);
+
+            float offsetMmX = (float)RoundToPrecision((newCenterPx.X - defaultCenter.X) * pxSizeX);
+            float offsetMmY = (float)RoundToPrecision((newCenterPx.Y - defaultCenter.Y) * pxSizeY);
+
+            CenterOffsetMm = new PointF(offsetMmX, offsetMmY);
+        }
+
+        public PointF ToMillimeter(PointF pixelPoint)
+        {
+            var center = GetCurrentCenterPx();
+            double pxSizeX = SafePixelSize(PixelSizeX);
+            double pxSizeY = SafePixelSize(PixelSizeY);
+
+            double relativeX = (pixelPoint.X - center.X) * pxSizeX;
+            double relativeY = (pixelPoint.Y - center.Y) * pxSizeY;
+
+            return new PointF((float)RoundToPrecision(relativeX), (float)RoundToPrecision(relativeY));
+        }
+
+        public PointF FromMillimeter(PointF mmPoint)
+        {
+            var center = GetCurrentCenterPx();
+            double pxSizeX = SafePixelSize(PixelSizeX);
+            double pxSizeY = SafePixelSize(PixelSizeY);
+
+            float x = (float)(center.X + (mmPoint.X / pxSizeX));
+            float y = (float)(center.Y + (mmPoint.Y / pxSizeY));
+            return new PointF(x, y);
+        }
+
+        public PointF SnapPixelToPrecision(PointF pixelPoint)
+        {
+            var mm = ToMillimeter(pixelPoint);
+            return FromMillimeter(mm);
         }
 
         public Recipe_DispensingPoints Load(string recipeName)
@@ -106,8 +189,9 @@ namespace DispensePath
                 try
                 {
                     newData = JsonSerializer.Deserialize<Recipe_DispensingPoints>(File.ReadAllText(path));
+                    newData?.NormalizeAfterLoad();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                 }
 
@@ -127,8 +211,9 @@ namespace DispensePath
                 try
                 {
                     newData = JsonSerializer.Deserialize<Recipe_DispensingPoints>(File.ReadAllText(path));
+                    newData?.NormalizeAfterLoad();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                 }
 
@@ -139,14 +224,175 @@ namespace DispensePath
             return newData;
         }
 
+        public void NormalizeAfterLoad()
+        {
+            if (string.Equals(SchemaVersion, CurrentSchemaVersion, StringComparison.OrdinalIgnoreCase))
+            {
+                for (int i = 0; i < Nodes.Count; i++)
+                {
+                    Nodes[i].Position = FromMillimeter(Nodes[i].Position);
+                }
+
+                foreach (var pl in Polylines)
+                {
+                    for (int i = 0; i < pl.Points.Count; i++)
+                    {
+                        pl.Points[i] = FromMillimeter(pl.Points[i]);
+                    }
+                }
+            }
+            else
+            {
+                SchemaVersion = CurrentSchemaVersion;
+            }
+        }
+
+        public Recipe_DispensingPoints DeepClone()
+        {
+            var clone = (Recipe_DispensingPoints)MemberwiseClone();
+            clone.Nodes = Nodes.Select(n => n.DeepClone()).ToList();
+            clone.Polylines = Polylines.Select(p => p.DeepClone()).ToList();
+            return clone;
+        }
+
+        private Recipe_DispensingPoints CreateSerializableSnapshot()
+        {
+            var snapshot = DeepClone();
+            snapshot.SchemaVersion = CurrentSchemaVersion;
+
+            for (int i = 0; i < snapshot.Nodes.Count; i++)
+            {
+                var mm = snapshot.ToMillimeter(snapshot.Nodes[i].Position);
+                snapshot.Nodes[i] = snapshot.Nodes[i].CloneWithPosition(mm);
+            }
+
+            for (int i = 0; i < snapshot.Polylines.Count; i++)
+            {
+                var poly = snapshot.Polylines[i];
+                for (int j = 0; j < poly.Points.Count; j++)
+                {
+                    poly.Points[j] = snapshot.ToMillimeter(poly.Points[j]);
+                }
+            }
+
+            return snapshot;
+        }
+
+        public IReadOnlyList<string> ValidateForExport()
+        {
+            List<string> errors = new List<string>();
+
+            if ((Nodes == null || Nodes.Count == 0) && (Polylines == null || Polylines.Count == 0))
+            {
+                errors.Add("No dispense path data available.");
+            }
+
+            if (PixelSizeX == 0 || PixelSizeY == 0)
+            {
+                errors.Add("Pixel size must be configured before export.");
+            }
+
+            if (EnforceSpeedLimit)
+            {
+                foreach (var pl in Polylines)
+                {
+                    double speed = pl.UseCustomSpeed ? pl.SpeedMmPerSec : DefaultSpeedMmPerSec;
+                    if (speed > SpeedLimitMmPerSec)
+                    {
+                        errors.Add($"Polyline #{pl.Order} speed exceeds limit: {speed:0.###} > {SpeedLimitMmPerSec:0.###} mm/s");
+                    }
+                }
+            }
+
+            return errors;
+        }
+
+        public PathInterpolationRecipe BuildPathInterpolationRecipe()
+        {
+            var recipe = new PathInterpolationRecipe
+            {
+                SchemaVersion = CurrentSchemaVersion,
+                DefaultSpeed = DefaultSpeedMmPerSec,
+                SpeedLimit = EnforceSpeedLimit ? SpeedLimitMmPerSec : (double?)null
+            };
+
+            int segmentIndex = 1;
+
+            if (Nodes != null)
+            {
+                foreach (var node in Nodes)
+                {
+                    var mm = ToMillimeter(node.Position);
+
+                    recipe.Segments.Add(new PathInterpolationSegment
+                    {
+                        Id = $"PT{segmentIndex:000}",
+                        UsesCustomSpeed = false,
+                        Points =
+                        {
+                            new PathInterpolationPoint
+                            {
+                                X = mm.X,
+                                Y = mm.Y,
+                                Speed = EnforceSpeedLimit ? Math.Min(node.Speed, SpeedLimitMmPerSec) : node.Speed,
+                                Acceleration = DefaultSpeedMmPerSec,
+                                Deceleration = DefaultSpeedMmPerSec,
+                                DispenseEnabled = node.Use,
+                                AutoSmoothing = false
+                            }
+                        }
+                    });
+                    segmentIndex++;
+                }
+            }
+
+            if (Polylines != null)
+            {
+                foreach (var pl in Polylines)
+                {
+                    double speed = pl.UseCustomSpeed ? pl.SpeedMmPerSec : DefaultSpeedMmPerSec;
+                    if (EnforceSpeedLimit)
+                    {
+                        speed = Math.Min(speed, SpeedLimitMmPerSec);
+                    }
+
+                    var segment = new PathInterpolationSegment
+                    {
+                        Id = $"PL{segmentIndex:000}",
+                        UsesCustomSpeed = pl.UseCustomSpeed,
+                        IsContinuous = pl.Use,
+                    };
+
+                    foreach (var pt in pl.Points)
+                    {
+                        var mm = ToMillimeter(pt);
+                        segment.Points.Add(new PathInterpolationPoint
+                        {
+                            X = mm.X,
+                            Y = mm.Y,
+                            Speed = speed,
+                            Acceleration = pl.AccelerationMmPerSec2,
+                            Deceleration = pl.DecelerationMmPerSec2,
+                            DispenseEnabled = pl.DispenseEnabled,
+                            AutoSmoothing = pl.UseAutoSmoothing
+                        });
+                    }
+
+                    recipe.Segments.Add(segment);
+                    segmentIndex++;
+                }
+            }
+
+            return recipe;
+        }
+
         public void Save(string recipeName)
         {
             string path = $"D:\\[SGMachineFDP]\\Recipe\\_config_recipe\\{recipeName}\\DispensingPath.json";
-            //Directory.CreateDirectory($"D:\\[SGMachineFDP]\\Recipe\\_config_recipe\\");
 
             JsonSerializerOptions options = new JsonSerializerOptions
             {
-                IgnoreNullValues = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
             };
 
@@ -154,13 +400,14 @@ namespace DispensePath
 
             try
             {
-                currRecipe = JsonSerializer.Serialize(this, options);
+                var snapshot = CreateSerializableSnapshot();
+                currRecipe = JsonSerializer.Serialize(snapshot, options);
                 File.WriteAllText(path, currRecipe);
             }
             catch (JsonException ex)
             {
-                options.IgnoreNullValues = true;
-                currRecipe = JsonSerializer.Serialize(this, options);
+                var snapshot = CreateSerializableSnapshot();
+                currRecipe = JsonSerializer.Serialize(snapshot, options);
                 File.WriteAllText(path, currRecipe);
 
                 //CLogger.Add(LOG.EXCEPTION, "[FAILED] {0}==>{1}   Execption ==> {2}", MethodBase.GetCurrentMethod().ReflectedType.Name, MethodBase.GetCurrentMethod().Name, ex.ToString());
@@ -175,7 +422,7 @@ namespace DispensePath
         {
             JsonSerializerOptions options = new JsonSerializerOptions
             {
-                IgnoreNullValues = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 WriteIndented = true
             };
 
@@ -183,13 +430,14 @@ namespace DispensePath
 
             try
             {
-                currRecipe = JsonSerializer.Serialize(this, options);
+                var snapshot = CreateSerializableSnapshot();
+                currRecipe = JsonSerializer.Serialize(snapshot, options);
                 File.WriteAllText(path, currRecipe);
             }
             catch (JsonException ex)
             {
-                options.IgnoreNullValues = true;
-                currRecipe = JsonSerializer.Serialize(this, options);
+                var snapshot = CreateSerializableSnapshot();
+                currRecipe = JsonSerializer.Serialize(snapshot, options);
                 File.WriteAllText(path, currRecipe);
 
                 //CLogger.Add(LOG.EXCEPTION, "[FAILED] {0}==>{1}   Execption ==> {2}", MethodBase.GetCurrentMethod().ReflectedType.Name, MethodBase.GetCurrentMethod().Name, ex.ToString());
@@ -357,6 +605,25 @@ namespace DispensePath
             clone.Use = Use;
             clone.OffsetZ = OffsetZ;
 
+            return clone;
+        }
+
+        public DispensePointNode DeepClone()
+        {
+            return new DispensePointNode
+            {
+                Position = new PointF(Position.X, Position.Y),
+                OffsetZ = OffsetZ,
+                Speed = Speed,
+                Use = Use,
+                IsComplete = IsComplete
+            };
+        }
+
+        public DispensePointNode CloneWithPosition(PointF newPosition)
+        {
+            var clone = DeepClone();
+            clone.Position = newPosition;
             return clone;
         }
     }
@@ -640,10 +907,32 @@ namespace DispensePath
         public int Order { get; set; }
         public float StrokeWidth { get; set; } = 2f;
         public Color Stroke { get; set; } = Color.DeepSkyBlue;
+
+        public bool UseCustomSpeed { get; set; } = false;
+        public double SpeedMmPerSec { get; set; } = 50.0;
+        public double AccelerationMmPerSec2 { get; set; } = 500.0;
+        public double DecelerationMmPerSec2 { get; set; } = 500.0;
+        public bool DispenseEnabled { get; set; } = true;
+        public bool UseAutoSmoothing { get; set; } = true;
+
         public IEnumerable<(PointF, PointF)> Segments()
         {
             for (int i = 0; i < Points.Count - 1; i++)
                 yield return (Points[i], Points[i + 1]);
+        }
+
+        public DispensePolyline DeepClone()
+        {
+            var clone = (DispensePolyline)MemberwiseClone();
+            clone.Points = Points.Select(p => new PointF(p.X, p.Y)).ToList();
+            return clone;
+        }
+
+        public DispensePolyline CloneWithPoints(IEnumerable<PointF> points)
+        {
+            var clone = DeepClone();
+            clone.Points = points.Select(p => new PointF(p.X, p.Y)).ToList();
+            return clone;
         }
     }
 
@@ -663,6 +952,8 @@ namespace DispensePath
         public EventHandler<EvenMousePosArgs> EventMouseClicked;
         public EventHandler<PositionEventArgs> EventPositionClicked;
         public event EventHandler<PointAddedEventArgs> PointAdded; // [2025-8-26] PointAdded
+        public event EventHandler PathContentChanged;
+        public event EventHandler SelectionChanged;
 
         [XmlIgnore, Browsable(false)]
         public string Position { get; set; } = "";
@@ -690,9 +981,14 @@ namespace DispensePath
         public bool _isSelectDrag = false;
         public bool _isMoveObjectDrag = false;
 
-        public List<Recipe_GraphicObject> CommandList { get; set; } = new List<Recipe_GraphicObject>();
-        public int CtrlZ_Index = 0;
-        public int Current_Index = 0;
+        private readonly List<Recipe_DispensingPoints> _history = new List<Recipe_DispensingPoints>();
+        private int _historyIndex = -1;
+        private const int MaxHistory = 50;
+        private int? _selectedLoosePointIndex = null;
+        private (int polylineOrder, int pointIndex)? _selectedPolylinePoint = null;
+
+        public int? SelectedPointNodeIndex => _selectedLoosePointIndex;
+        public (int polylineOrder, int pointIndex)? SelectedPolylinePoint => _selectedPolylinePoint;
 
         // [2025-8-21]
         public Recipe_DispensingPoints Recipe_DispPoints { get; set; } = new Recipe_DispensingPoints();
@@ -715,6 +1011,167 @@ namespace DispensePath
         private Point _panStartScreen;          // 컨트롤 좌표계 기준 시작점(e.Location)
         private PointF _panStartOffset = PointF.Empty; // 팬 시작 시점의 오프셋(이미지 px)
         private PointF _viewOffset = PointF.Empty;     // 현재 뷰 오프셋(이미지 px) - 모든 그리기에 적용
+
+        public void ResetHistory()
+        {
+            _history.Clear();
+            if (Recipe_DispPoints != null)
+            {
+                _history.Add(Recipe_DispPoints.DeepClone());
+                _historyIndex = _history.Count - 1;
+            }
+            else
+            {
+                _historyIndex = -1;
+            }
+        }
+
+        private void CaptureSnapshot()
+        {
+            if (Recipe_DispPoints == null) return;
+
+            if (_historyIndex >= 0 && _historyIndex < _history.Count - 1)
+            {
+                _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+            }
+
+            _history.Add(Recipe_DispPoints.DeepClone());
+            if (_history.Count > MaxHistory)
+            {
+                int removeCount = _history.Count - MaxHistory;
+                _history.RemoveRange(0, removeCount);
+                _historyIndex -= removeCount;
+            }
+
+            _historyIndex = _history.Count - 1;
+        }
+
+        private bool RestoreFromHistory(int targetIndex)
+        {
+            if (targetIndex < 0 || targetIndex >= _history.Count) return false;
+            Recipe_DispPoints = _history[targetIndex].DeepClone();
+            _historyIndex = targetIndex;
+            RedrawComposite();
+            OnPathContentChanged();
+            return true;
+        }
+
+        public bool Undo()
+        {
+            if (_historyIndex <= 0) return false;
+            return RestoreFromHistory(_historyIndex - 1);
+        }
+
+        public bool Redo()
+        {
+            if (_historyIndex >= _history.Count - 1) return false;
+            return RestoreFromHistory(_historyIndex + 1);
+        }
+
+        public void ReplaceRecipe(Recipe_DispensingPoints replacement)
+        {
+            Recipe_DispPoints = replacement ?? new Recipe_DispensingPoints();
+            ResetHistory();
+            ClearSelection();
+            RedrawComposite();
+            OnPathContentChanged();
+        }
+
+        private void OnPathContentChanged()
+        {
+            PathContentChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void OnSelectionChanged()
+        {
+            SelectionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ClearSelection()
+        {
+            bool changed = _selectedLoosePointIndex.HasValue || _selectedPolylinePoint.HasValue;
+            _selectedLoosePointIndex = null;
+            _selectedPolylinePoint = null;
+            if (Recipe_DispPoints?.Polylines != null)
+            {
+                foreach (var pl in Recipe_DispPoints.Polylines)
+                {
+                    if (pl.IsSelected)
+                    {
+                        pl.IsSelected = false;
+                        changed = true;
+                    }
+                }
+            }
+            if (changed)
+            {
+                RedrawComposite();
+                OnSelectionChanged();
+            }
+        }
+
+        public void SelectStandalonePoint(int index)
+        {
+            if (Recipe_DispPoints?.Nodes == null)
+            {
+                _selectedLoosePointIndex = null;
+            }
+            else if (index >= 0 && index < Recipe_DispPoints.Nodes.Count)
+            {
+                _selectedLoosePointIndex = index;
+            }
+            else
+            {
+                _selectedLoosePointIndex = null;
+            }
+
+            _selectedPolylinePoint = null;
+            if (Recipe_DispPoints?.Polylines != null)
+            {
+                foreach (var pl in Recipe_DispPoints.Polylines)
+                {
+                    pl.IsSelected = false;
+                }
+            }
+            RedrawComposite();
+            OnSelectionChanged();
+        }
+
+        public void SelectPolylinePoint(int order, int pointIndex)
+        {
+            if (Recipe_DispPoints?.Polylines != null)
+            {
+                foreach (var pl in Recipe_DispPoints.Polylines)
+                {
+                    pl.IsSelected = pl.Order == order;
+                }
+            }
+
+            _selectedLoosePointIndex = null;
+            _selectedPolylinePoint = (order, pointIndex);
+            RedrawComposite();
+            OnSelectionChanged();
+        }
+
+        private Color ApplyOpacity(Color color, bool forceOpaque = false)
+        {
+            double opacity = forceOpaque ? 1.0 : Recipe_DispPoints?.OverlayOpacity ?? 1.0;
+            if (opacity < 0) opacity = 0;
+            if (opacity > 1) opacity = 1;
+            return Color.FromArgb((int)Math.Round(255 * opacity), color);
+        }
+
+        public void UpdatePolylineParameters(int order, Action<DispensePolyline> updater)
+        {
+            if (updater == null || Recipe_DispPoints?.Polylines == null) return;
+            var target = Recipe_DispPoints.Polylines.FirstOrDefault(p => p.Order == order);
+            if (target == null) return;
+
+            CaptureSnapshot();
+            updater(target);
+            RedrawComposite();
+            OnPathContentChanged();
+        }
 
         // [2025-8-22]
         public void UpdateBackgroundImage()
@@ -869,6 +1326,8 @@ namespace DispensePath
             timer.Interval = 33;
             timer.Tick += new System.EventHandler(this.OnTimerTick);
             timer.Enabled = true;
+
+            ResetHistory();
         }
 
         private void OnTimerTick(object sender, EventArgs e)
@@ -1060,6 +1519,7 @@ namespace DispensePath
             // 1) 오프스크린 캔버스 준비 (배경의 원본 크기 기준)
             int canvasW = Math.Max(1, _imgBackground?.Width ?? ibMap.Image?.Width ?? ibMap.Width);
             int canvasH = Math.Max(1, _imgBackground?.Height ?? ibMap.Image?.Height ?? ibMap.Height);
+            Recipe_DispPoints?.UpdateCanvasSize(canvasW, canvasH);
             using (var back = new Bitmap(canvasW, canvasH))
             using (Graphics g = Graphics.FromImage(back))
             {
@@ -1114,18 +1574,18 @@ namespace DispensePath
                     const float r = 14f;      // 원 반지름(px)
                     const float cross = 12f;  // 십자선 절반 길이(px)
 
-                    foreach (var node in Recipe_DispPoints.Nodes)
+                    for (int i = 0; i < Recipe_DispPoints.Nodes.Count; i++)
                     {
+                        var node = Recipe_DispPoints.Nodes[i];
                         var c = node.Position;
+                        bool isSelected = _selectedLoosePointIndex.HasValue && _selectedLoosePointIndex.Value == i;
 
-                        // 1) 원을 노란색으로 채움
-                        using (var br = new SolidBrush(Color.Yellow))
+                        using (var br = new SolidBrush(isSelected ? Color.OrangeRed : ApplyOpacity(Color.Yellow)))
                         {
                             g.FillEllipse(br, c.X - r, c.Y - r, r * 2f, r * 2f);
                         }
 
-                        // 2) 십자는 검정색, 굵게
-                        using (var pen = new Pen(Color.Black, 2.0f))
+                        using (var pen = new Pen(isSelected ? Color.White : Color.Black, 2.0f))
                         {
                             g.DrawLine(pen, c.X - cross, c.Y, c.X + cross, c.Y); // 가로
                             g.DrawLine(pen, c.X, c.Y - cross, c.X, c.Y + cross); // 세로
@@ -1137,7 +1597,7 @@ namespace DispensePath
                 {
                     foreach (var pl in Recipe_DispPoints.Polylines)
                     {
-                        using (var pen = new Pen(pl.IsSelected ? Color.OrangeRed : pl.Stroke, pl.StrokeWidth))
+                        using (var pen = new Pen(pl.IsSelected ? Color.OrangeRed : ApplyOpacity(pl.Stroke), pl.StrokeWidth))
                         {
                             // 세그먼트 루프: Points[i] ~ Points[i+1]
                             for (int i = 0; i < pl.Points.Count - 1; i++)
@@ -1145,6 +1605,25 @@ namespace DispensePath
                                 var a = pl.Points[i];
                                 var b = pl.Points[i + 1];
                                 g.DrawLine(pen, a, b);
+                            }
+                        }
+                    }
+
+                    if (_selectedPolylinePoint.HasValue)
+                    {
+                        var (order, pointIndex) = _selectedPolylinePoint.Value;
+                        var selected = Recipe_DispPoints.Polylines.FirstOrDefault(p => p.Order == order);
+                        if (selected != null && pointIndex >= 0 && pointIndex < selected.Points.Count)
+                        {
+                            var c = selected.Points[pointIndex];
+                            const float markerRadius = 8f;
+                            using (var br = new SolidBrush(Color.OrangeRed))
+                            {
+                                g.FillEllipse(br, c.X - markerRadius, c.Y - markerRadius, markerRadius * 2f, markerRadius * 2f);
+                            }
+                            using (var pen = new Pen(Color.White, 2f))
+                            {
+                                g.DrawEllipse(pen, c.X - markerRadius, c.Y - markerRadius, markerRadius * 2f, markerRadius * 2f);
                             }
                         }
                     }
@@ -1278,15 +1757,16 @@ namespace DispensePath
 
                 if (Control.ModifierKeys == Keys.None && e.Button == MouseButtons.Left) // [2025-8-25] 조건 수정
                 {
+                    var snapped = Recipe_DispPoints.SnapPixelToPrecision(_mouse);
                     if (!_isDrawingPolyline)
                     {
                         _isDrawingPolyline = true;
                         _polyTemp = new DispensePolyline { Order = Recipe_DispPoints.Polylines.Count };
-                        _polyTemp.Points.Add(_mouse);
+                        _polyTemp.Points.Add(snapped);
                     }
                     else
                     {
-                        _polyTemp.Points.Add(_mouse);
+                        _polyTemp.Points.Add(snapped);
                     }
                     RedrawComposite(); // ← 여기서도 즉시 합성
                     return;
@@ -1295,12 +1775,16 @@ namespace DispensePath
                 {
                     if (_isDrawingPolyline && _polyTemp != null && _polyTemp.Points.Count >= 1)
                     {
-                        _polyTemp.Points.Add(_mouse);
+                        var snapped = Recipe_DispPoints.SnapPixelToPrecision(_mouse);
+                        _polyTemp.Points.Add(snapped);
 
+                        CaptureSnapshot();
                         Recipe_DispPoints.Polylines.Add(_polyTemp);
                         _polyTemp = null;
                         _isDrawingPolyline = false;
                         RedrawComposite();
+                        SelectPolylinePoint(Recipe_DispPoints.Polylines.Last().Order, 0);
+                        OnPathContentChanged();
                     }
                 }
             }
@@ -1310,17 +1794,23 @@ namespace DispensePath
             {
                 if (Control.ModifierKeys == Keys.None && e.Button == MouseButtons.Left)
                 {
-                    Recipe_DispPoints.Nodes.Add(new DispensePointNode(_mouse));
+                    CaptureSnapshot();
+                    var snapped = Recipe_DispPoints.SnapPixelToPrecision(_mouse);
+                    Recipe_DispPoints.Nodes.Add(new DispensePointNode(snapped));
 
                     // 이벤트 발생: No, 좌표, 도구 타입 전달
                     PointAdded?.Invoke(this, new PointAddedEventArgs
                     {
                         Index = Recipe_DispPoints.Nodes.Count,  // 1부터 번호 매김
-                        Position = _mouse,
+                        Position = Recipe_DispPoints.ToMillimeter(snapped),
                         Tool = DrawToolType.AddPoint
                     });
 
+                    _selectedLoosePointIndex = Recipe_DispPoints.Nodes.Count - 1;
+                    _selectedPolylinePoint = null;
                     RedrawComposite(); // ← 여기서도 즉시 합성
+                    OnPathContentChanged();
+                    OnSelectionChanged();
                     return;
                 }
             }
@@ -1414,10 +1904,13 @@ namespace DispensePath
         {
             if (_isDrawingPolyline && _polyTemp != null && _polyTemp.Points.Count >= 2)
             {
+                CaptureSnapshot();
                 Recipe_DispPoints.Polylines.Add(_polyTemp);
                 _polyTemp = null;
                 _isDrawingPolyline = false;
                 RedrawComposite();
+                SelectPolylinePoint(Recipe_DispPoints.Polylines.Last().Order, 0);
+                OnPathContentChanged();
             }
         }
     }
