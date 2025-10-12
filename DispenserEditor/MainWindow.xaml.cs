@@ -138,6 +138,14 @@ namespace DispenserEditor
             RenderFeatures();
         }
 
+        private void OnFeatureGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                _viewModel.SaveSnapshot();
+            }
+        }
+
         private void UpdateCanvasSize()
         {
             var width = ReferenceImage.ActualWidth;

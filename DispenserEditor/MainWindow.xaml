@@ -92,11 +92,16 @@
                               MinHeight="200"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
-                              IsReadOnly="True">
+                              CellEditEnding="OnFeatureGridCellEditEnding">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="이름" Binding="{Binding DisplayName}" Width="2*" />
-                            <DataGridTextColumn Header="타입" Binding="{Binding TypeDescription}" Width="*" />
-                            <DataGridTextColumn Header="좌표" Binding="{Binding Coordinates}" Width="3*" />
+                            <DataGridTextColumn Header="이름" Binding="{Binding DisplayName}" Width="2*" IsReadOnly="True" />
+                            <DataGridTextColumn Header="타입" Binding="{Binding TypeDescription}" Width="*" IsReadOnly="True" />
+                            <DataGridTextColumn Header="X"
+                                                Width="*"
+                                                Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Y"
+                                                Width="*"
+                                                Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         </DataGrid.Columns>
                     </DataGrid>
 
