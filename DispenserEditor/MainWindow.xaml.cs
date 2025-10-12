@@ -174,6 +174,11 @@ namespace DispenserEditor
         {
             DrawingCanvas.Children.Clear();
             var opacity = _viewModel.Recipe.OverlayOpacity;
+            var scale = GetScale();
+            var origin = GetOrigin(scale);
+
+            DrawCrosshair(origin);
+
             foreach (var feature in _viewModel.Features)
             {
                 var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
@@ -220,18 +225,62 @@ namespace DispenserEditor
 
         private Point ToCanvas(PathPoint point)
         {
-            var scale = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
-            var x = DrawingCanvas.ActualWidth / 2 + point.X * scale;
-            var y = DrawingCanvas.ActualHeight / 2 + point.Y * scale;
+            var scale = GetScale();
+            var origin = GetOrigin(scale);
+            var x = origin.X + point.X * scale;
+            var y = origin.Y + point.Y * scale;
             return new Point(x, y);
         }
 
         private Point ToModel(Point canvasPoint)
         {
-            var scale = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
-            var x = (canvasPoint.X - DrawingCanvas.ActualWidth / 2) / scale;
-            var y = (canvasPoint.Y - DrawingCanvas.ActualHeight / 2) / scale;
+            var scale = GetScale();
+            var origin = GetOrigin(scale);
+            var x = (canvasPoint.X - origin.X) / scale;
+            var y = (canvasPoint.Y - origin.Y) / scale;
             return new Point(Math.Round(x, 3), Math.Round(y, 3));
+        }
+
+        private void DrawCrosshair(Point origin)
+        {
+            var vertical = new Line
+            {
+                X1 = origin.X,
+                X2 = origin.X,
+                Y1 = 0,
+                Y2 = DrawingCanvas.ActualHeight,
+                Stroke = Brushes.LightGray,
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 4, 4 },
+                IsHitTestVisible = false
+            };
+
+            var horizontal = new Line
+            {
+                Y1 = origin.Y,
+                Y2 = origin.Y,
+                X1 = 0,
+                X2 = DrawingCanvas.ActualWidth,
+                Stroke = Brushes.LightGray,
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 4, 4 },
+                IsHitTestVisible = false
+            };
+
+            DrawingCanvas.Children.Add(vertical);
+            DrawingCanvas.Children.Add(horizontal);
+        }
+
+        private double GetScale()
+        {
+            return Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+        }
+
+        private Point GetOrigin(double scale)
+        {
+            var x = DrawingCanvas.ActualWidth / 2 - _viewModel.AppliedCenterX * scale;
+            var y = DrawingCanvas.ActualHeight / 2 - _viewModel.AppliedCenterY * scale;
+            return new Point(x, y);
         }
 
         private void OnModeChanged(object sender, RoutedEventArgs e)

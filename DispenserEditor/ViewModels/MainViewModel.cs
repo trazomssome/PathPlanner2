@@ -34,12 +34,16 @@ namespace DispenserEditor.ViewModels
         private double _imageWidth = 800;
         private double _imageHeight = 600;
         private string _statusMessage = string.Empty;
+        private double _appliedCenterX;
+        private double _appliedCenterY;
 
         public MainViewModel()
         {
             Recipe = new PathRecipe();
             Recipe.Features.CollectionChanged += OnFeaturesCollectionChanged;
             FeatureEntries = new ObservableCollection<FeatureListEntry>();
+            _appliedCenterX = Recipe.CenterX;
+            _appliedCenterY = Recipe.CenterY;
             SaveSnapshot();
             UpdateFeatureEntries();
         }
@@ -86,6 +90,10 @@ namespace DispenserEditor.ViewModels
             get => _referenceImage;
             private set => SetProperty(ref _referenceImage, value);
         }
+
+        public double AppliedCenterX => _appliedCenterX;
+
+        public double AppliedCenterY => _appliedCenterY;
 
         public double ImageWidth
         {
@@ -234,16 +242,16 @@ namespace DispenserEditor.ViewModels
             {
                 foreach (var point in feature.Points)
                 {
-                    point.X -= offsetX;
-                    point.Y -= offsetY;
+                    point.X += offsetX;
+                    point.Y += offsetY;
                 }
             }
         }
 
         public void SetCenter(double x, double y)
         {
-            var deltaX = x - Recipe.CenterX;
-            var deltaY = y - Recipe.CenterY;
+            var deltaX = x - _appliedCenterX;
+            var deltaY = y - _appliedCenterY;
             if (Math.Abs(deltaX) < double.Epsilon && Math.Abs(deltaY) < double.Epsilon)
             {
                 return;
@@ -252,6 +260,10 @@ namespace DispenserEditor.ViewModels
             ShiftAllPoints(deltaX, deltaY);
             Recipe.CenterX = x;
             Recipe.CenterY = y;
+            _appliedCenterX = Recipe.CenterX;
+            _appliedCenterY = Recipe.CenterY;
+            RaisePropertyChanged(nameof(AppliedCenterX));
+            RaisePropertyChanged(nameof(AppliedCenterY));
             SaveSnapshot();
             StatusMessage = $"센터를 ({x:F3}, {y:F3})로 이동했습니다.";
         }
@@ -344,6 +356,10 @@ namespace DispenserEditor.ViewModels
             Recipe.CenterX = restored.CenterX;
             Recipe.CenterY = restored.CenterY;
             Recipe.SchemaVersion = restored.SchemaVersion;
+            _appliedCenterX = Recipe.CenterX;
+            _appliedCenterY = Recipe.CenterY;
+            RaisePropertyChanged(nameof(AppliedCenterX));
+            RaisePropertyChanged(nameof(AppliedCenterY));
 
             Recipe.Features.Clear();
             foreach (var feature in restored.Features)
