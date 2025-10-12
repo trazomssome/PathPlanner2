@@ -24,6 +24,12 @@ namespace DispenserEditor
         private bool _isDraggingCrosshair;
         private Vector _crosshairDragOffset;
         private bool _crosshairChanged;
+        private const double DefaultZoom = 1.0;
+        private const double MinZoomFactor = 0.1;
+        private const double MaxZoomFactor = 10.0;
+        private const double ZoomStep = 1.1;
+        private double _zoomFactor = DefaultZoom;
+        private double _baseDisplayScale = 1.0;
 
         public MainWindow()
         {
@@ -55,7 +61,7 @@ namespace DispenserEditor
             }
             else if (e.PropertyName == nameof(_viewModel.ReferenceImage))
             {
-                UpdateCanvasSize();
+                SetZoom(DefaultZoom, forceUpdate: true);
             }
         }
 
@@ -157,18 +163,34 @@ namespace DispenserEditor
 
         private void UpdateCanvasSize()
         {
+            var calculatedBaseScale = CalculateBaseDisplayScale();
+            if (!double.IsNaN(calculatedBaseScale) && calculatedBaseScale > 0)
+            {
+                _baseDisplayScale = calculatedBaseScale;
+            }
+
             var scale = GetDisplayScale();
             var width = _viewModel.ImageWidth * scale;
             var height = _viewModel.ImageHeight * scale;
 
+            if ((width <= 0 || double.IsNaN(width)) && _viewModel.ImageWidth > 0)
+            {
+                width = _viewModel.ImageWidth * _baseDisplayScale;
+            }
+
+            if ((height <= 0 || double.IsNaN(height)) && _viewModel.ImageHeight > 0)
+            {
+                height = _viewModel.ImageHeight * _baseDisplayScale;
+            }
+
             if (width <= 0 || double.IsNaN(width))
             {
-                width = ReferenceImage.ActualWidth;
+                width = CanvasHost.ActualWidth;
             }
 
             if (height <= 0 || double.IsNaN(height))
             {
-                height = ReferenceImage.ActualHeight;
+                height = CanvasHost.ActualHeight;
             }
 
             if ((width <= 0 || double.IsNaN(width)) && ReferenceImage.Parent is FrameworkElement parent)
@@ -184,11 +206,23 @@ namespace DispenserEditor
             if (width > 0 && !double.IsNaN(width))
             {
                 DrawingCanvas.Width = width;
+                ReferenceImage.Width = width;
+            }
+            else
+            {
+                DrawingCanvas.Width = double.NaN;
+                ReferenceImage.Width = double.NaN;
             }
 
             if (height > 0 && !double.IsNaN(height))
             {
                 DrawingCanvas.Height = height;
+                ReferenceImage.Height = height;
+            }
+            else
+            {
+                DrawingCanvas.Height = double.NaN;
+                ReferenceImage.Height = double.NaN;
             }
 
             RenderFeatures();
@@ -196,6 +230,59 @@ namespace DispenserEditor
 
         private void OnReferenceImageSizeChanged(object sender, SizeChangedEventArgs e)
         {
+            UpdateCanvasSize();
+        }
+
+        private void OnCanvasHostSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateCanvasSize();
+        }
+
+        private void OnCanvasMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (e == null)
+            {
+                return;
+            }
+
+            var previousZoom = _zoomFactor;
+            var factor = e.Delta > 0 ? ZoomStep : 1.0 / ZoomStep;
+            SetZoom(_zoomFactor * factor);
+
+            if (Math.Abs(_zoomFactor - previousZoom) > 0.0001)
+            {
+                _viewModel.StatusMessage = $"줌 배율: {_zoomFactor * 100:0}%";
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnResetZoom(object sender, RoutedEventArgs e)
+        {
+            var previousZoom = _zoomFactor;
+            SetZoom(DefaultZoom, forceUpdate: true);
+
+            if (Math.Abs(_zoomFactor - previousZoom) > 0.0001)
+            {
+                _viewModel.StatusMessage = "줌을 기본 배율로 재설정했습니다.";
+            }
+        }
+
+        private void SetZoom(double zoom, bool forceUpdate = false)
+        {
+            if (double.IsNaN(zoom))
+            {
+                return;
+            }
+
+            zoom = Math.Max(MinZoomFactor, Math.Min(MaxZoomFactor, zoom));
+
+            if (!forceUpdate && Math.Abs(zoom - _zoomFactor) < 0.0001)
+            {
+                return;
+            }
+
+            _zoomFactor = zoom;
             UpdateCanvasSize();
         }
 
@@ -349,23 +436,40 @@ namespace DispenserEditor
 
         private double GetDisplayScale()
         {
-            var displayedWidth = ReferenceImage.ActualWidth;
-            var displayedHeight = ReferenceImage.ActualHeight;
+            var scale = _baseDisplayScale * _zoomFactor;
+            if (double.IsNaN(scale) || scale <= 0)
+            {
+                return 1.0;
+            }
+
+            return scale;
+        }
+
+        private double CalculateBaseDisplayScale()
+        {
             var imageWidth = _viewModel.ImageWidth;
             var imageHeight = _viewModel.ImageHeight;
 
-            double scaleX = double.NaN;
-            double scaleY = double.NaN;
-
-            if (!double.IsNaN(displayedWidth) && displayedWidth > 0 && imageWidth > 0)
+            if (imageWidth <= 0 || imageHeight <= 0)
             {
-                scaleX = displayedWidth / imageWidth;
+                return double.NaN;
             }
 
-            if (!double.IsNaN(displayedHeight) && displayedHeight > 0 && imageHeight > 0)
+            double availableWidth = CanvasHost.ActualWidth;
+            double availableHeight = CanvasHost.ActualHeight;
+
+            if ((availableWidth <= 0 || double.IsNaN(availableWidth)) && CanvasHost.Parent is FrameworkElement parent)
             {
-                scaleY = displayedHeight / imageHeight;
+                availableWidth = parent.ActualWidth;
             }
+
+            if ((availableHeight <= 0 || double.IsNaN(availableHeight)) && CanvasHost.Parent is FrameworkElement parentElement)
+            {
+                availableHeight = parentElement.ActualHeight;
+            }
+
+            double scaleX = (!double.IsNaN(availableWidth) && availableWidth > 0) ? availableWidth / imageWidth : double.NaN;
+            double scaleY = (!double.IsNaN(availableHeight) && availableHeight > 0) ? availableHeight / imageHeight : double.NaN;
 
             if (!double.IsNaN(scaleX) && scaleX > 0)
             {
@@ -382,7 +486,7 @@ namespace DispenserEditor
                 return scaleY;
             }
 
-            return 1.0;
+            return double.NaN;
         }
 
         private Point GetOrigin(double scale)
