@@ -84,6 +84,7 @@
     <Compile Include="Models\PathFeature.cs" />
     <Compile Include="Models\PathPoint.cs" />
     <Compile Include="Models\PathRecipe.cs" />
+    <Compile Include="ViewModels\FeatureListEntry.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
   </ItemGroup>
   <ItemGroup>
