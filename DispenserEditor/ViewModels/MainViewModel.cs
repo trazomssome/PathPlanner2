@@ -377,6 +377,10 @@ namespace DispenserEditor.ViewModels
         {
             var previousEntry = _selectedEntry;
 
+            foreach (var entry in FeatureEntries)
+            {
+                entry.Dispose();
+            }
             FeatureEntries.Clear();
             foreach (var feature in Features)
             {
