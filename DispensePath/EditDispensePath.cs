@@ -97,7 +97,7 @@ namespace DispensePath
 
         public Recipe_DispensingPoints Load(string recipeName)
         {
-            string path = $"D:\\[SGMachineFDP]\\Recipe\\_config_recipe\\{recipeName}\\DispensingPath.json";
+            string path = $"D:\\test\\DispensingPath.json";
 
             Recipe_DispensingPoints newData = null;
 
@@ -141,7 +141,7 @@ namespace DispensePath
 
         public void Save(string recipeName)
         {
-            string path = $"D:\\[SGMachineFDP]\\Recipe\\_config_recipe\\{recipeName}\\DispensingPath.json";
+            string path = $"D:\\test\\DispensingPath.json";
             //Directory.CreateDirectory($"D:\\[SGMachineFDP]\\Recipe\\_config_recipe\\");
 
             JsonSerializerOptions options = new JsonSerializerOptions
