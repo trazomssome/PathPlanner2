@@ -104,11 +104,5 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\DispensePath\DispensePath.csproj">
-      <Project>{2513ed58-935e-4c7b-a9ea-f13bf6d029dd}</Project>
-      <Name>DispensePath</Name>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
