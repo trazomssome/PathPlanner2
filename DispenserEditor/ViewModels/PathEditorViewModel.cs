@@ -21,10 +21,11 @@ namespace DispenserEditor.ViewModels
         Line
     }
 
-    public class MainViewModel : ObservableObject
+    public class PathEditorViewModel : ObservableObject
     {
         private readonly Stack<string> _undoStack = new Stack<string>();
         private readonly Stack<string> _redoStack = new Stack<string>();
+        private PathRecipe _recipe;
         private PathFeature _selectedFeature = null;
         private PathPoint _selectedPoint = null;
         private FeatureListEntry _selectedEntry = null;
@@ -37,22 +38,68 @@ namespace DispenserEditor.ViewModels
         private double _appliedCenterX;
         private double _appliedCenterY;
 
-        public MainViewModel()
+        public PathEditorViewModel()
         {
-            Recipe = new PathRecipe();
-            Recipe.Features.CollectionChanged += OnFeaturesCollectionChanged;
             FeatureEntries = new ObservableCollection<FeatureListEntry>();
-            _appliedCenterX = Recipe.CenterX;
-            _appliedCenterY = Recipe.CenterY;
-            SaveSnapshot();
-            UpdateFeatureEntries();
+            LoadRecipe(new PathRecipe(), initializeHistory: true);
         }
 
-        public PathRecipe Recipe { get; }
+        public PathRecipe Recipe
+        {
+            get => _recipe;
+            private set
+            {
+                if (!ReferenceEquals(_recipe, value))
+                {
+                    _recipe = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(Features));
+                }
+            }
+        }
 
-        public ObservableCollection<PathFeature> Features => Recipe.Features;
+        public ObservableCollection<PathFeature> Features => Recipe?.Features;
 
         public ObservableCollection<FeatureListEntry> FeatureEntries { get; }
+
+        public void LoadRecipe(PathRecipe recipe)
+        {
+            LoadRecipe(recipe, initializeHistory: true);
+        }
+
+        private void LoadRecipe(PathRecipe recipe, bool initializeHistory)
+        {
+            if (recipe == null)
+            {
+                throw new ArgumentNullException(nameof(recipe));
+            }
+
+            if (ReferenceEquals(_recipe, recipe))
+            {
+                return;
+            }
+
+            if (_recipe != null)
+            {
+                DetachRecipe(_recipe);
+            }
+
+            Recipe = recipe;
+            AttachRecipe(Recipe);
+            _appliedCenterX = Recipe.CenterX;
+            _appliedCenterY = Recipe.CenterY;
+            RaisePropertyChanged(nameof(AppliedCenterX));
+            RaisePropertyChanged(nameof(AppliedCenterY));
+            UpdateFeatureEntries();
+            SelectedFeature = Recipe.Features.FirstOrDefault();
+
+            if (initializeHistory)
+            {
+                _undoStack.Clear();
+                _redoStack.Clear();
+                SaveSnapshot();
+            }
+        }
 
         public PathFeature SelectedFeature
         {
@@ -141,7 +188,7 @@ namespace DispenserEditor.ViewModels
             RestoreFromJson(snapshot);
             RaisePropertyChanged(nameof(CanUndo));
             RaisePropertyChanged(nameof(CanRedo));
-            StatusMessage = "이전 상태로 되돌렸습니다.";
+            StatusMessage = "Reverted to previous state.";
         }
 
         public void Redo()
@@ -156,7 +203,7 @@ namespace DispenserEditor.ViewModels
             RestoreFromJson(snapshot);
             RaisePropertyChanged(nameof(CanUndo));
             RaisePropertyChanged(nameof(CanRedo));
-            StatusMessage = "다시 실행했습니다.";
+            StatusMessage = "Restored next state.";
         }
 
         public void ImportRecipe()
@@ -271,7 +318,7 @@ namespace DispenserEditor.ViewModels
 
             if (updateStatus)
             {
-                StatusMessage = $"센터를 ({x:F3}, {y:F3})로 이동했습니다.";
+                StatusMessage = $"Center moved to ({x:F3}, {y:F3}).";
             }
         }
 
@@ -292,12 +339,7 @@ namespace DispenserEditor.ViewModels
             {
                 foreach (PathFeature feature in e.OldItems)
                 {
-                    feature.PropertyChanged -= OnFeaturePropertyChanged;
-                    feature.Points.CollectionChanged -= OnFeaturePointsChanged;
-                    foreach (var point in feature.Points)
-                    {
-                        point.PropertyChanged -= OnPointPropertyChanged;
-                    }
+                    DetachFeature(feature);
                 }
             }
 
@@ -305,17 +347,50 @@ namespace DispenserEditor.ViewModels
             {
                 foreach (PathFeature feature in e.NewItems)
                 {
-                    feature.PropertyChanged += OnFeaturePropertyChanged;
-                    feature.Points.CollectionChanged += OnFeaturePointsChanged;
-                    foreach (var point in feature.Points)
-                    {
-                        point.PropertyChanged += OnPointPropertyChanged;
-                    }
+                    AttachFeature(feature);
                 }
             }
 
             RaisePropertyChanged(nameof(Features));
             UpdateFeatureEntries();
+        }
+
+        private void AttachRecipe(PathRecipe recipe)
+        {
+            recipe.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            foreach (var feature in recipe.Features)
+            {
+                AttachFeature(feature);
+            }
+        }
+
+        private void DetachRecipe(PathRecipe recipe)
+        {
+            recipe.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            foreach (var feature in recipe.Features)
+            {
+                DetachFeature(feature);
+            }
+        }
+
+        private void AttachFeature(PathFeature feature)
+        {
+            feature.PropertyChanged += OnFeaturePropertyChanged;
+            feature.Points.CollectionChanged += OnFeaturePointsChanged;
+            foreach (var point in feature.Points)
+            {
+                point.PropertyChanged += OnPointPropertyChanged;
+            }
+        }
+
+        private void DetachFeature(PathFeature feature)
+        {
+            feature.PropertyChanged -= OnFeaturePropertyChanged;
+            feature.Points.CollectionChanged -= OnFeaturePointsChanged;
+            foreach (var point in feature.Points)
+            {
+                point.PropertyChanged -= OnPointPropertyChanged;
+            }
         }
 
         private void OnFeaturePropertyChanged(object sender, PropertyChangedEventArgs e)
