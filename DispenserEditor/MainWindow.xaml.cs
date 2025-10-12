@@ -163,6 +163,16 @@ namespace DispenserEditor
                 height = ((FrameworkElement)ReferenceImage.Parent).ActualHeight;
             }
 
+            if (width <= 0 || double.IsNaN(width))
+            {
+                width = _viewModel.ImageWidth * GetDisplayScale();
+            }
+
+            if (height <= 0 || double.IsNaN(height))
+            {
+                height = _viewModel.ImageHeight * GetDisplayScale();
+            }
+
             DrawingCanvas.Width = width;
             DrawingCanvas.Height = height;
             RenderFeatures();
@@ -313,7 +323,47 @@ namespace DispenserEditor
 
         private double GetScale()
         {
-            return Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+            var pixelsPerMillimetre = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+            var displayScale = GetDisplayScale();
+            return Math.Max(pixelsPerMillimetre * displayScale, 0.0001);
+        }
+
+        private double GetDisplayScale()
+        {
+            var displayedWidth = ReferenceImage.ActualWidth;
+            var displayedHeight = ReferenceImage.ActualHeight;
+            var imageWidth = _viewModel.ImageWidth;
+            var imageHeight = _viewModel.ImageHeight;
+
+            double scaleX = double.NaN;
+            double scaleY = double.NaN;
+
+            if (!double.IsNaN(displayedWidth) && displayedWidth > 0 && imageWidth > 0)
+            {
+                scaleX = displayedWidth / imageWidth;
+            }
+
+            if (!double.IsNaN(displayedHeight) && displayedHeight > 0 && imageHeight > 0)
+            {
+                scaleY = displayedHeight / imageHeight;
+            }
+
+            if (!double.IsNaN(scaleX) && scaleX > 0)
+            {
+                if (!double.IsNaN(scaleY) && scaleY > 0)
+                {
+                    return Math.Min(scaleX, scaleY);
+                }
+
+                return scaleX;
+            }
+
+            if (!double.IsNaN(scaleY) && scaleY > 0)
+            {
+                return scaleY;
+            }
+
+            return 1.0;
         }
 
         private Point GetOrigin(double scale)
