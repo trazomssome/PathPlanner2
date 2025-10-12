@@ -388,13 +388,13 @@ namespace DispenserEditor
 
         private double GetCanvasWidth()
         {
-            var width = DrawingCanvas.ActualWidth;
+            var width = DrawingCanvas.Width;
             if (width > 0 && !double.IsNaN(width))
             {
                 return width;
             }
 
-            width = DrawingCanvas.Width;
+            width = DrawingCanvas.ActualWidth;
             if (width > 0 && !double.IsNaN(width))
             {
                 return width;
@@ -416,13 +416,13 @@ namespace DispenserEditor
 
         private double GetCanvasHeight()
         {
-            var height = DrawingCanvas.ActualHeight;
+            var height = DrawingCanvas.Height;
             if (height > 0 && !double.IsNaN(height))
             {
                 return height;
             }
 
-            height = DrawingCanvas.Height;
+            height = DrawingCanvas.ActualHeight;
             if (height > 0 && !double.IsNaN(height))
             {
                 return height;
