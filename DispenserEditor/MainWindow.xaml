@@ -104,10 +104,10 @@
                                                 Binding="{Binding StartY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <DataGridTextColumn Header="끝 X"
                                                 Width="*"
-                                                Binding="{Binding EndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, TargetNullValue=}" />
+                                                Binding="{Binding EndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <DataGridTextColumn Header="끝 Y"
                                                 Width="*"
-                                                Binding="{Binding EndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, TargetNullValue=}" />
+                                                Binding="{Binding EndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </DataGrid.Columns>
                     </DataGrid>
 
