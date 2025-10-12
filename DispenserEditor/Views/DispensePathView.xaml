@@ -1,0 +1,293 @@
+<UserControl x:Class="DispenserEditor.Views.DispensePathView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:DispenserEditor.ViewModels"
+             mc:Ignorable="d">
+    <UserControl.DataContext>
+        <vm:DispensePathViewModel />
+    </UserControl.DataContext>
+
+    <Grid Background="#FF1E1E1E">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" />
+                <ColumnDefinition Width="280" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Polyline List -->
+            <Border Grid.Column="0" Margin="0,0,12,0" Background="#222" Padding="10" CornerRadius="6">
+                <DockPanel>
+                    <TextBlock Text="Dispense Polylines"
+                               DockPanel.Dock="Top"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Foreground="White" />
+                    <DataGrid ItemsSource="{Binding Polylines}"
+                              SelectedItem="{Binding SelectedPolyline}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              Margin="0,8,0,8"
+                              RowHeaderWidth="0"
+                              Background="#2C2C2C"
+                              Foreground="White"
+                              BorderThickness="0"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow">
+                        <DataGrid.Resources>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Style>
+                        </DataGrid.Resources>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Width="40" Binding="{Binding Order, Mode=TwoWay}" />
+                            <DataGridCheckBoxColumn Header="Use" Width="50" Binding="{Binding Use, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="Open(ms)" Width="*" Binding="{Binding OpenTimeMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Close(ms)" Width="*" Binding="{Binding CloseTimeMs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Pulse" Width="60" Binding="{Binding NumOfPulse, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Add" Width="70" Command="{Binding AddPolylineCommand}" Margin="0,0,6,0" />
+                            <Button Content="Remove" Width="70" Command="{Binding RemovePolylineCommand}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Content="Flip H" Width="70" Command="{Binding FlipHorizontalCommand}" Margin="0,0,6,0" />
+                            <Button Content="Flip V" Width="70" Command="{Binding FlipVerticalCommand}" />
+                        </StackPanel>
+                        <Separator Margin="0,6,0,6" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Pixel" Foreground="Gray" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="X:" Foreground="Gray" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox Width="60" Text="{Binding PixelSizeX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0" />
+                            <TextBlock Text="Y:" Foreground="Gray" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox Width="60" Text="{Binding PixelSizeY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Point List -->
+            <Border Grid.Column="1" Margin="0,0,12,0" Background="#222" Padding="10" CornerRadius="6">
+                <DockPanel>
+                    <TextBlock Text="Polyline Points"
+                               DockPanel.Dock="Top"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Foreground="White" />
+                    <DataGrid ItemsSource="{Binding SelectedPolyline.Points}"
+                              SelectedItem="{Binding SelectedPoint}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              HeadersVisibility="Column"
+                              Margin="0,8,0,8"
+                              RowHeaderWidth="0"
+                              Background="#2C2C2C"
+                              Foreground="White"
+                              BorderThickness="0"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="X" Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" Width="*" />
+                            <DataGridTextColumn Header="Y" Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" Width="*" />
+                            <DataGridTextColumn Header="Offset Z" Binding="{Binding OffsetZ, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F3}" Width="*" />
+                            <DataGridTextColumn Header="Speed" Binding="{Binding Speed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" Width="*" />
+                            <DataGridCheckBoxColumn Header="Use" Binding="{Binding Use, Mode=TwoWay}" Width="60" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Add" Width="70" Command="{Binding AddPointCommand}" Margin="0,0,6,0" />
+                            <Button Content="Remove" Width="70" Command="{Binding RemovePointCommand}" />
+                        </StackPanel>
+                        <TextBlock Text="Canvas 클릭: 점 추가 / Ctrl+클릭: 선택 뒤에 삽입 / Shift+클릭: Anchor 추가"
+                                   Foreground="Gray"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+                        <Separator Margin="0,10,0,6" />
+                        <TextBlock Text="Anchor Nodes"
+                                   Foreground="White"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,4" />
+                        <ListBox ItemsSource="{Binding AnchorNodes}"
+                                 SelectedItem="{Binding SelectedAnchorNode}"
+                                 Height="130"
+                                 Background="#1F1F1F"
+                                 Foreground="White"
+                                 BorderBrush="#333">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="X:" Foreground="Gray" Margin="0,0,4,0" />
+                                        <TextBlock Text="{Binding X, StringFormat=F1}" Width="60" />
+                                        <TextBlock Text="Y:" Foreground="Gray" Margin="6,0,4,0" />
+                                        <TextBlock Text="{Binding Y, StringFormat=F1}" Width="60" />
+                                        <TextBlock Text="Use" Foreground="Gray" Margin="6,0,4,0" />
+                                        <CheckBox IsChecked="{Binding Use}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Button Content="Add Center" Command="{Binding AddAnchorNodeCommand}" Margin="0,0,6,0" />
+                            <Button Content="Remove" Command="{Binding RemoveAnchorNodeCommand}" Margin="0,0,6,0" />
+                            <Button Content="Clear" Command="{Binding ClearAnchorNodesCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Drawing Area -->
+            <Border Grid.Column="2" Background="#202020" Padding="10" CornerRadius="6">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <ToolBar Grid.Row="0" Background="#2A2A2A" Foreground="White">
+                        <TextBlock Text="Recipe" Margin="0,0,6,0" />
+                        <TextBox Width="220" Margin="0,0,6,0" Text="{Binding RecipePath, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="Load" Command="{Binding LoadRecipeCommand}" Margin="0,0,4,0" />
+                        <Button Content="Save" Command="{Binding SaveRecipeCommand}" Margin="0,0,12,0" />
+                        <Separator />
+                        <TextBlock Text="Zoom" Margin="12,0,6,0" />
+                        <Slider Width="120" Minimum="0.1" Maximum="5" Value="{Binding Zoom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="+" Width="28" Command="{Binding ZoomInCommand}" Margin="6,0,0,0" />
+                        <Button Content="-" Width="28" Command="{Binding ZoomOutCommand}" Margin="4,0,0,0" />
+                        <Button Content="Reset" Width="50" Command="{Binding ResetZoomCommand}" Margin="4,0,0,0" />
+                    </ToolBar>
+
+                    <Border Grid.Row="1" Background="#1A1A1A" Margin="0,10,0,0">
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <Grid>
+                                <Grid.RenderTransform>
+                                    <ScaleTransform ScaleX="{Binding Zoom}" ScaleY="{Binding Zoom}" />
+                                </Grid.RenderTransform>
+
+                                <Grid Width="{Binding CanvasWidth}"
+                                      Height="{Binding CanvasHeight}">
+                                    <Image Source="{Binding BackgroundImage}"
+                                           Stretch="Fill"
+                                           Width="{Binding CanvasWidth}"
+                                           Height="{Binding CanvasHeight}" />
+                                    <Canvas x:Name="DrawingCanvas"
+                                            Width="{Binding CanvasWidth}"
+                                            Height="{Binding CanvasHeight}"
+                                            Background="Transparent"
+                                            MouseLeftButtonDown="OnCanvasMouseLeftButtonDown">
+                                        <ItemsControl ItemsSource="{Binding Polylines}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="0" />
+                                                    <Setter Property="Canvas.Top" Value="0" />
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Polyline Points="{Binding GeometryPoints}"
+                                                             StrokeThickness="{Binding StrokeThickness}"
+                                                             Stroke="{Binding StrokeBrush}"
+                                                             Fill="Transparent" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <ItemsControl ItemsSource="{Binding SelectedPolyline.Points}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="0" />
+                                                    <Setter Property="Canvas.Top" Value="0" />
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Ellipse Width="10"
+                                                             Height="10"
+                                                             Canvas.Left="{Binding CanvasLeft}"
+                                                             Canvas.Top="{Binding CanvasTop}"
+                                                             StrokeThickness="1.5"
+                                                             Stroke="Black"
+                                                             MouseLeftButtonDown="OnPointEllipseMouseLeftButtonDown">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill" Value="#FFff8c00" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Fill" Value="Gold" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <ItemsControl ItemsSource="{Binding AnchorNodes}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="0" />
+                                                    <Setter Property="Canvas.Top" Value="0" />
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Width="16" Height="16"
+                                                          Canvas.Left="{Binding CanvasLeft}"
+                                                          Canvas.Top="{Binding CanvasTop}"
+                                                          MouseLeftButtonDown="OnAnchorNodeMouseLeftButtonDown">
+                                                        <Grid.RenderTransform>
+                                                            <TranslateTransform X="-3" Y="-3" />
+                                                        </Grid.RenderTransform>
+                                                        <Path StrokeThickness="2" Stroke="#FFE0E0E0" Data="M0,8 L16,8 M8,0 L8,16" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Canvas>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <StatusBar Grid.Row="1" Background="#2A2A2A" Foreground="White">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right" Margin="10,0,0,0">
+                <TextBlock Text="Ctrl+클릭: 선택 뒤에 삽입, Shift+클릭: Anchor 추가" Foreground="Gray" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</UserControl>
