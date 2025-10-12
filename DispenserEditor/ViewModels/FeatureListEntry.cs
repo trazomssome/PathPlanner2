@@ -10,29 +10,21 @@ namespace DispenserEditor.ViewModels
     {
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
 
-        private FeatureListEntry(PathFeature feature, PathPoint startPoint, PathPoint endPoint, int segmentIndex)
+        private FeatureListEntry(PathFeature feature, PathPoint point, int segmentIndex)
         {
             Feature = feature;
-            StartPoint = startPoint;
-            EndPoint = endPoint;
+            Point = point;
             SegmentIndex = segmentIndex;
 
-            if (StartPoint != null)
+            if (Point != null)
             {
-                StartPoint.PropertyChanged += OnPointPropertyChanged;
-            }
-
-            if (EndPoint != null)
-            {
-                EndPoint.PropertyChanged += OnPointPropertyChanged;
+                Point.PropertyChanged += OnPointPropertyChanged;
             }
         }
 
         public PathFeature Feature { get; }
 
-        public PathPoint StartPoint { get; }
-
-        public PathPoint EndPoint { get; }
+        public PathPoint Point { get; }
 
         public int SegmentIndex { get; }
 
@@ -42,7 +34,7 @@ namespace DispenserEditor.ViewModels
             {
                 if (Feature.Type == PathFeatureType.Line && SegmentIndex >= 0)
                 {
-                    return $"{Feature.Name} (Segment {SegmentIndex + 1})";
+                    return $"{Feature.Name} (세그먼트 {SegmentIndex + 1})";
                 }
 
                 return Feature.Name;
@@ -51,76 +43,41 @@ namespace DispenserEditor.ViewModels
 
         public string TypeDescription => Feature.Type == PathFeatureType.Line ? "선" : "점";
 
-        public double? StartX
+        public double? X
         {
-            get => StartPoint?.X;
+            get => Point?.X;
             set
             {
-                if (StartPoint != null && value.HasValue)
+                if (Point != null && value.HasValue)
                 {
-                    StartPoint.X = value.Value;
-                    RaisePropertyChanged(nameof(StartX));
+                    Point.X = value.Value;
+                    RaisePropertyChanged(nameof(X));
                     RaisePropertyChanged(nameof(Coordinates));
                 }
             }
         }
 
-        public double? StartY
+        public double? Y
         {
-            get => StartPoint?.Y;
+            get => Point?.Y;
             set
             {
-                if (StartPoint != null && value.HasValue)
+                if (Point != null && value.HasValue)
                 {
-                    StartPoint.Y = value.Value;
-                    RaisePropertyChanged(nameof(StartY));
+                    Point.Y = value.Value;
+                    RaisePropertyChanged(nameof(Y));
                     RaisePropertyChanged(nameof(Coordinates));
                 }
             }
         }
-
-        public double? EndX
-        {
-            get => EndPoint?.X;
-            set
-            {
-                if (EndPoint != null && value.HasValue)
-                {
-                    EndPoint.X = value.Value;
-                    RaisePropertyChanged(nameof(EndX));
-                    RaisePropertyChanged(nameof(Coordinates));
-                }
-            }
-        }
-
-        public double? EndY
-        {
-            get => EndPoint?.Y;
-            set
-            {
-                if (EndPoint != null && value.HasValue)
-                {
-                    EndPoint.Y = value.Value;
-                    RaisePropertyChanged(nameof(EndY));
-                    RaisePropertyChanged(nameof(Coordinates));
-                }
-            }
-        }
-
-        public bool HasEndPoint => EndPoint != null;
 
         public string Coordinates
         {
             get
             {
-                if (Feature.Type == PathFeatureType.Line && StartPoint != null && EndPoint != null)
+                if (Point != null)
                 {
-                    return $"시작({Format(StartPoint.X)}, {Format(StartPoint.Y)}) → 끝({Format(EndPoint.X)}, {Format(EndPoint.Y)})";
-                }
-
-                if (StartPoint != null)
-                {
-                    return $"({Format(StartPoint.X)}, {Format(StartPoint.Y)})";
+                    return $"({Format(Point.X)}, {Format(Point.Y)})";
                 }
 
                 return string.Empty;
@@ -129,24 +86,19 @@ namespace DispenserEditor.ViewModels
 
         public static FeatureListEntry ForPoint(PathFeature feature, PathPoint point)
         {
-            return new FeatureListEntry(feature, point, null, -1);
+            return new FeatureListEntry(feature, point, -1);
         }
 
-        public static FeatureListEntry ForSegment(PathFeature feature, PathPoint startPoint, PathPoint endPoint, int segmentIndex)
+        public static FeatureListEntry ForLinePoint(PathFeature feature, PathPoint point, int segmentIndex)
         {
-            return new FeatureListEntry(feature, startPoint, endPoint, segmentIndex);
+            return new FeatureListEntry(feature, point, segmentIndex);
         }
 
         public void Dispose()
         {
-            if (StartPoint != null)
+            if (Point != null)
             {
-                StartPoint.PropertyChanged -= OnPointPropertyChanged;
-            }
-
-            if (EndPoint != null)
-            {
-                EndPoint.PropertyChanged -= OnPointPropertyChanged;
+                Point.PropertyChanged -= OnPointPropertyChanged;
             }
         }
 
@@ -157,26 +109,15 @@ namespace DispenserEditor.ViewModels
 
         private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (sender == StartPoint)
+            if (sender == Point)
             {
                 if (e.PropertyName == nameof(PathPoint.X))
                 {
-                    RaisePropertyChanged(nameof(StartX));
+                    RaisePropertyChanged(nameof(X));
                 }
                 else if (e.PropertyName == nameof(PathPoint.Y))
                 {
-                    RaisePropertyChanged(nameof(StartY));
-                }
-            }
-            else if (sender == EndPoint)
-            {
-                if (e.PropertyName == nameof(PathPoint.X))
-                {
-                    RaisePropertyChanged(nameof(EndX));
-                }
-                else if (e.PropertyName == nameof(PathPoint.Y))
-                {
-                    RaisePropertyChanged(nameof(EndY));
+                    RaisePropertyChanged(nameof(Y));
                 }
             }
 

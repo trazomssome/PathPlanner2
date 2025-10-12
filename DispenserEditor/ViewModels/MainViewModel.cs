@@ -386,11 +386,10 @@ namespace DispenserEditor.ViewModels
             {
                 if (feature.Type == PathFeatureType.Line)
                 {
-                    for (int i = 0; i < feature.Points.Count - 1; i++)
+                    for (int i = 0; i < feature.Points.Count; i++)
                     {
-                        var start = feature.Points[i];
-                        var end = feature.Points[i + 1];
-                        FeatureEntries.Add(FeatureListEntry.ForSegment(feature, start, end, i));
+                        var point = feature.Points[i];
+                        FeatureEntries.Add(FeatureListEntry.ForLinePoint(feature, point, i));
                     }
                 }
                 else
@@ -406,8 +405,7 @@ namespace DispenserEditor.ViewModels
                 target = FeatureEntries.FirstOrDefault(entry =>
                     ReferenceEquals(entry.Feature, previousEntry.Feature) &&
                     entry.SegmentIndex == previousEntry.SegmentIndex &&
-                    ReferenceEquals(entry.StartPoint, previousEntry.StartPoint) &&
-                    ReferenceEquals(entry.EndPoint, previousEntry.EndPoint));
+                    ReferenceEquals(entry.Point, previousEntry.Point));
             }
 
             if (target == null && SelectedFeature != null)
