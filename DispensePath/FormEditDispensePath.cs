@@ -6,6 +6,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Globalization;
 using System.Windows.Documents;
 using System.Windows.Forms;
 using Control = System.Windows.Forms.Control;
@@ -22,8 +23,15 @@ namespace DispensePath
             public bool IsPolylineStart;
             public EditDispensePath.DrawToolType Tool;
             public int PolylineOrder; // pl.Order
-            public int PointIndex;    // pl.Points 내 인덱스
+            public int PointIndex;    // pl.Points 내 인덱스 또는 Nodes 인덱스
         }
+
+        private const string ColumnNameNo = "colNo";
+        private const string ColumnNameX = "colX";
+        private const string ColumnNameY = "colY";
+        private const string ColumnNameTool = "colTool";
+
+        private bool _suppressGridValueChanged;
 
         // 현재 “시작점 편집 중”인 대상
         private GridPointMeta _editingStartMeta;
@@ -66,23 +74,45 @@ namespace DispensePath
             // 초기엔 비활성화
             SetStartParamEditorsEnabled(false);
 
-            _graphicEditor = new EditDispensePath(recipe_name); 
+            _graphicEditor = new EditDispensePath(recipe_name);
             _graphicEditor.Dock = DockStyle.Fill;
             _graphicEditor.Visible = true;
 
             plPathDraw.Controls.Add(_graphicEditor);
 
+            ConfigureElementGridColumns();
+
             // 이벤트 구독: Grid에 행 추가
             _graphicEditor.PointAdded += (s, e) =>
             {
-                // 컬럼 순서: No / X / Y / DrawToolType (디자이너의 컬럼 순서 기준)
-                // 표시 포맷은 필요에 맞게 조정
-                gridGraphicNodes.Rows.Add(
-                    e.Index,
-                    e.Position.X.ToString("0.###"),
-                    e.Position.Y.ToString("0.###"),
-                    e.Tool.ToString() // "AddPoint"
-                );
+                try
+                {
+                    _suppressGridValueChanged = true;
+
+                    // 컬럼 순서: No / X / Y / DrawToolType (디자이너의 컬럼 순서 기준)
+                    // 표시 포맷은 필요에 맞게 조정
+                    int rowIndex = gridGraphicNodes.Rows.Add(
+                        e.Index,
+                        Math.Round(e.Position.X, 3),
+                        Math.Round(e.Position.Y, 3),
+                        e.Tool.ToString() // "AddPoint"
+                    );
+
+                    if (rowIndex >= 0 && rowIndex < gridGraphicNodes.Rows.Count)
+                    {
+                        gridGraphicNodes.Rows[rowIndex].Tag = new GridPointMeta
+                        {
+                            Tool = e.Tool,
+                            PolylineOrder = -1,
+                            PointIndex = Math.Max(0, e.Index - 1),
+                            IsPolylineStart = false
+                        };
+                    }
+                }
+                finally
+                {
+                    _suppressGridValueChanged = false;
+                }
             };
 
             gridGraphicNodes.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
@@ -90,6 +120,8 @@ namespace DispensePath
 
             // [2025-9-29]
             gridGraphicNodes.CellClick += gridGraphicNodes_CellClick;
+            gridGraphicNodes.CellValidating += gridGraphicNodes_CellValidating;
+            gridGraphicNodes.CellValueChanged += gridGraphicNodes_CellValueChanged;
 
         }
 
@@ -99,6 +131,116 @@ namespace DispensePath
             // 헤더 폰트 사이즈 변경
             //gridGraphicNodes.ColumnHeadersDefaultCellStyle.Font =
             //    new Font("맑은 고딕", 10F, FontStyle.Bold);  // 기존보다 작게 (9pt)
+        }
+
+        private void ConfigureElementGridColumns()
+        {
+            if (gridGraphicNodes == null)
+                return;
+
+            if (gridGraphicNodes.Columns.Count >= 4)
+            {
+                EnsureColumn(gridGraphicNodes.Columns[0], ColumnNameNo, "No", true);
+                EnsureCoordinateColumn(ColumnNameX, "X (mm)", 1);
+                EnsureCoordinateColumn(ColumnNameY, "Y (mm)", 2);
+
+                DataGridViewColumn toolColumn = null;
+                if (gridGraphicNodes.Columns.Contains(ColumnNameTool))
+                {
+                    toolColumn = gridGraphicNodes.Columns[ColumnNameTool];
+                }
+                else if (gridGraphicNodes.Columns.Count > 3)
+                {
+                    toolColumn = gridGraphicNodes.Columns[3];
+                    toolColumn.Name = ColumnNameTool;
+                }
+
+                EnsureColumn(toolColumn, ColumnNameTool, "Type", true);
+            }
+            else
+            {
+                gridGraphicNodes.Columns.Clear();
+
+                gridGraphicNodes.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = ColumnNameNo,
+                    HeaderText = "No",
+                    ReadOnly = true,
+                    SortMode = DataGridViewColumnSortMode.NotSortable
+                });
+
+                gridGraphicNodes.Columns.Add(CreateCoordinateColumn(ColumnNameX, "X (mm)"));
+                gridGraphicNodes.Columns.Add(CreateCoordinateColumn(ColumnNameY, "Y (mm)"));
+
+                gridGraphicNodes.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    Name = ColumnNameTool,
+                    HeaderText = "Type",
+                    ReadOnly = true,
+                    SortMode = DataGridViewColumnSortMode.NotSortable
+                });
+            }
+
+            gridGraphicNodes.ReadOnly = false;
+        }
+
+        private DataGridViewTextBoxColumn CreateCoordinateColumn(string name, string headerText)
+        {
+            var column = new DataGridViewTextBoxColumn
+            {
+                Name = name,
+                HeaderText = headerText,
+                ValueType = typeof(double),
+                ReadOnly = false,
+                SortMode = DataGridViewColumnSortMode.NotSortable
+            };
+
+            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            column.DefaultCellStyle.Format = "0.###";
+
+            return column;
+        }
+
+        private void EnsureCoordinateColumn(string name, string headerText, int columnIndex)
+        {
+            DataGridViewColumn column = null;
+
+            if (gridGraphicNodes.Columns.Contains(name))
+            {
+                column = gridGraphicNodes.Columns[name];
+            }
+            else if (columnIndex < gridGraphicNodes.Columns.Count)
+            {
+                column = gridGraphicNodes.Columns[columnIndex];
+                column.Name = name;
+            }
+
+            if (column == null)
+            {
+                column = CreateCoordinateColumn(name, headerText);
+                if (columnIndex <= gridGraphicNodes.Columns.Count)
+                    gridGraphicNodes.Columns.Insert(columnIndex, column);
+                else
+                    gridGraphicNodes.Columns.Add(column);
+            }
+
+            column.HeaderText = headerText;
+            column.ReadOnly = false;
+            column.ValueType = typeof(double);
+            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            column.DefaultCellStyle.Format = "0.###";
+            column.SortMode = DataGridViewColumnSortMode.NotSortable;
+        }
+
+        private void EnsureColumn(DataGridViewColumn column, string name, string headerText, bool readOnly)
+        {
+            if (column == null)
+                return;
+
+            column.Name = name;
+            column.HeaderText = headerText;
+            column.ReadOnly = readOnly;
+            column.SortMode = DataGridViewColumnSortMode.NotSortable;
         }
 
         private void FormSetting_GraphicEdit_Load(object sender, EventArgs e)
@@ -147,6 +289,7 @@ namespace DispensePath
 
         private void RefreshGraphicGrid()
         {
+            _suppressGridValueChanged = true;
             gridGraphicNodes.SuspendLayout();
             try
             {
@@ -158,14 +301,29 @@ namespace DispensePath
                 var nodes = _graphicEditor?.Recipe_DispPoints?.Nodes;
                 if (nodes != null)
                 {
-                    foreach (var n in nodes)
+                    for (int i = 0; i < nodes.Count; i++)
                     {
-                        gridGraphicNodes.Rows.Add(
+                        var node = nodes[i];
+                        int rowIndex = gridGraphicNodes.Rows.Add(
                             no++,
-                            n.Position.X.ToString("0.###"),
-                            n.Position.Y.ToString("0.###"),
-                            EditDispensePath.DrawToolType.AddPoint.ToString()  // "AddPoint"
+                            Math.Round(node.Position.X, 3),
+                            Math.Round(node.Position.Y, 3),
+                            EditDispensePath.DrawToolType.AddPoint.ToString()
                         );
+
+                        if (rowIndex >= 0 && rowIndex < gridGraphicNodes.Rows.Count)
+                        {
+                            var row = gridGraphicNodes.Rows[rowIndex];
+                            row.Tag = new GridPointMeta
+                            {
+                                IsPolylineStart = false,
+                                Tool = EditDispensePath.DrawToolType.AddPoint,
+                                PolylineOrder = -1,
+                                PointIndex = i
+                            };
+                            row.DefaultCellStyle.BackColor = Color.Empty;
+                            row.DefaultCellStyle.SelectionBackColor = Color.Empty;
+                        }
                     }
                 }
 
@@ -180,26 +338,34 @@ namespace DispensePath
                             var p = pl.Points[j];
                             int rowIndex = gridGraphicNodes.Rows.Add(
                                 no++,
-                                p.X.ToString("0.###"),
-                                p.Y.ToString("0.###"),
+                                Math.Round(p.X, 3),
+                                Math.Round(p.Y, 3),
                                 EditDispensePath.DrawToolType.PolyLine.ToString()
                             );
 
-                            var row = gridGraphicNodes.Rows[rowIndex];
-                            // 행 메타정보 태깅
-                            row.Tag = new GridPointMeta
+                            if (rowIndex >= 0 && rowIndex < gridGraphicNodes.Rows.Count)
                             {
-                                IsPolylineStart = (j == 0),
-                                Tool = EditDispensePath.DrawToolType.PolyLine,
-                                PolylineOrder = pl.Order,
-                                PointIndex = j
-                            };
+                                var row = gridGraphicNodes.Rows[rowIndex];
+                                // 행 메타정보 태깅
+                                row.Tag = new GridPointMeta
+                                {
+                                    IsPolylineStart = (j == 0),
+                                    Tool = EditDispensePath.DrawToolType.PolyLine,
+                                    PolylineOrder = pl.Order,
+                                    PointIndex = j
+                                };
 
-                            // 시작점이면 연한 푸른색으로 강조
-                            if (j == 0)
-                            {
-                                row.DefaultCellStyle.BackColor = Color.FromArgb(232, 244, 255); // 아주 연한 푸른색
-                                row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(204, 228, 247); // 선택 시도 연한 푸른색
+                                // 시작점이면 연한 푸른색으로 강조
+                                if (j == 0)
+                                {
+                                    row.DefaultCellStyle.BackColor = Color.FromArgb(232, 244, 255); // 아주 연한 푸른색
+                                    row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(204, 228, 247); // 선택 시도 연한 푸른색
+                                }
+                                else
+                                {
+                                    row.DefaultCellStyle.BackColor = Color.Empty;
+                                    row.DefaultCellStyle.SelectionBackColor = Color.Empty;
+                                }
                             }
                         }
                     }
@@ -209,6 +375,7 @@ namespace DispensePath
             finally
             {
                 gridGraphicNodes.ResumeLayout();
+                _suppressGridValueChanged = false;
             }
         }
 
@@ -250,6 +417,142 @@ namespace DispensePath
             tbOpenTime.Text = pl.OpenTimeMs.ToString("0.###");
             tbCloseTime.Text = pl.CloseTimeMs.ToString("0.###");
             tbNumOfPulse.Text = pl.NumOfPulse.ToString();
+        }
+
+        private void gridGraphicNodes_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
+        {
+            if (e.RowIndex < 0 || !IsCoordinateColumn(e.ColumnIndex))
+                return;
+
+            if (!TryParseCoordinate(Convert.ToString(e.FormattedValue), out _))
+            {
+                e.Cancel = true;
+                gridGraphicNodes.Rows[e.RowIndex].ErrorText = "숫자 값을 입력하세요.";
+            }
+            else
+            {
+                gridGraphicNodes.Rows[e.RowIndex].ErrorText = string.Empty;
+            }
+        }
+
+        private void gridGraphicNodes_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_suppressGridValueChanged)
+                return;
+
+            if (e.RowIndex < 0 || !IsCoordinateColumn(e.ColumnIndex))
+                return;
+
+            var row = gridGraphicNodes.Rows[e.RowIndex];
+            if (!(row?.Tag is GridPointMeta meta))
+                return;
+
+            if (!TryGetCoordinate(row.Cells[e.ColumnIndex].Value, out double newValue))
+                return;
+
+            bool updated = false;
+
+            if (meta.Tool == EditDispensePath.DrawToolType.AddPoint)
+            {
+                var nodes = _graphicEditor?.Recipe_DispPoints?.Nodes;
+                if (nodes != null && meta.PointIndex >= 0 && meta.PointIndex < nodes.Count)
+                {
+                    var node = nodes[meta.PointIndex];
+                    var position = node.Position;
+
+                    position = IsXColumn(e.ColumnIndex)
+                        ? new PointF((float)newValue, position.Y)
+                        : new PointF(position.X, (float)newValue);
+
+                    node.Position = position;
+                    nodes[meta.PointIndex] = node;
+                    updated = true;
+                }
+            }
+            else if (meta.Tool == EditDispensePath.DrawToolType.PolyLine)
+            {
+                var polylines = _graphicEditor?.Recipe_DispPoints?.Polylines;
+                if (polylines != null)
+                {
+                    var polyline = polylines.FirstOrDefault(p => p.Order == meta.PolylineOrder);
+                    if (polyline != null && meta.PointIndex >= 0 && meta.PointIndex < polyline.Points.Count)
+                    {
+                        var point = polyline.Points[meta.PointIndex];
+
+                        point = IsXColumn(e.ColumnIndex)
+                            ? new PointF((float)newValue, point.Y)
+                            : new PointF(point.X, (float)newValue);
+
+                        polyline.Points[meta.PointIndex] = point;
+                        updated = true;
+                    }
+                }
+            }
+
+            if (updated)
+            {
+                try
+                {
+                    _suppressGridValueChanged = true;
+                    row.Cells[e.ColumnIndex].Value = Math.Round(newValue, 3);
+                }
+                finally
+                {
+                    _suppressGridValueChanged = false;
+                }
+
+                _graphicEditor?.RedrawComposite();
+                _graphicEditor?.Invalidate();
+            }
+        }
+
+        private bool TryGetCoordinate(object value, out double result)
+        {
+            if (value is double d)
+            {
+                result = d;
+                return true;
+            }
+
+            if (value is float f)
+            {
+                result = f;
+                return true;
+            }
+
+            return TryParseCoordinate(Convert.ToString(value), out result);
+        }
+
+        private bool TryParseCoordinate(string text, out double result)
+        {
+            text = text?.Trim();
+
+            if (string.IsNullOrEmpty(text))
+            {
+                result = 0;
+                return false;
+            }
+
+            return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out result) ||
+                   double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out result);
+        }
+
+        private bool IsCoordinateColumn(int columnIndex)
+        {
+            if (columnIndex < 0 || columnIndex >= gridGraphicNodes.Columns.Count)
+                return false;
+
+            string name = gridGraphicNodes.Columns[columnIndex].Name;
+            return string.Equals(name, ColumnNameX, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, ColumnNameY, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsXColumn(int columnIndex)
+        {
+            if (columnIndex < 0 || columnIndex >= gridGraphicNodes.Columns.Count)
+                return false;
+
+            return string.Equals(gridGraphicNodes.Columns[columnIndex].Name, ColumnNameX, StringComparison.OrdinalIgnoreCase);
         }
 
         // TODO: 더블클릭 시 실제 동작은 여기에서 구현(당신이 내용 제공)
