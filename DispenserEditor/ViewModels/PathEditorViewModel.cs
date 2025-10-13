@@ -571,7 +571,13 @@ namespace DispenserEditor.ViewModels
             EnsureDefaultItem();
             if (!Recipe.Items.Contains(SelectedItem))
             {
-                SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
+                var candidate = Recipe.SelectedItem;
+                if (candidate == null || !Recipe.Items.Contains(candidate))
+                {
+                    candidate = Recipe.Items.FirstOrDefault();
+                }
+
+                SelectedItem = candidate;
             }
 
             RaisePropertyChanged(nameof(Items));
@@ -660,17 +666,28 @@ namespace DispenserEditor.ViewModels
             AttachRecipe(Recipe);
             EnsureDefaultItem();
 
-            var targetSelection = Recipe.SelectedItem;
-            if (targetSelection == null && previousSelection != null)
+            PathRecipeItem targetSelection = null;
+            if (previousSelection != null)
             {
                 if (previousIndex >= 0 && previousIndex < Recipe.Items.Count)
                 {
                     targetSelection = Recipe.Items[previousIndex];
                 }
-                else
+
+                if (targetSelection == null)
                 {
                     targetSelection = Recipe.Items.FirstOrDefault(item => string.Equals(item.Name, previousSelection.Name, StringComparison.Ordinal));
                 }
+            }
+
+            if (targetSelection == null)
+            {
+                targetSelection = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
+            }
+
+            if (_selectedItem != null)
+            {
+                SelectedItem = null;
             }
 
             SelectedItem = targetSelection ?? Recipe.Items.FirstOrDefault();
