@@ -795,7 +795,8 @@ namespace DispenserEditor.Controls
 
             if (_isPanning)
             {
-                PanTo(position);
+                var hostPosition = e.GetPosition(CanvasHost);
+                PanTo(hostPosition);
                 UpdateMousePositionIndicator(position);
                 return;
             }
@@ -861,11 +862,10 @@ namespace DispenserEditor.Controls
 
         private void OnCanvasRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            var position = e.GetPosition(DrawingCanvas);
             _pendingLineCompletion = _viewModel.CurrentMode == DrawingMode.Line && _activeLineFeature != null;
             _isPanning = true;
             _panMoved = false;
-            _panStart = position;
+            _panStart = e.GetPosition(CanvasHost);
             _panStartOffset = _panOffset;
             DrawingCanvas.CaptureMouse();
             e.Handled = true;
