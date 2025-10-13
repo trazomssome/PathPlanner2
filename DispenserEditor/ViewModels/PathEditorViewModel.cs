@@ -436,7 +436,7 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
-            if (CrosshairMode == CrosshairMoveMode.MovePointsWithCrosshair)
+            if (CrosshairMode == CrosshairMoveMode.KeepPointsFixed)
             {
                 ShiftAllPoints(deltaX, deltaY);
             }
