@@ -632,7 +632,7 @@ namespace DispenserEditor.Controls
             }
 
             _crosshairChanged = true;
-            if (_viewModel.CrosshairMode == CrosshairMoveMode.MovePointsWithCrosshair)
+            if (_viewModel.CrosshairMode == CrosshairMoveMode.KeepPointsFixed)
             {
                 ExecuteWithRenderSuppressed(() =>
                     _viewModel.SetCenter(centerX, centerY, commit: false, updateStatus: false));
