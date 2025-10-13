@@ -34,14 +34,14 @@ namespace DispenserEditor.ViewModels
             {
                 if (Feature.Type == PathFeatureType.Line && SegmentIndex >= 0)
                 {
-                    return $"{Feature.Name} (세그먼트 {SegmentIndex + 1})";
+                    return $"{Feature.Name} (Segment {SegmentIndex + 1})";
                 }
 
                 return Feature.Name;
             }
         }
 
-        public string TypeDescription => Feature.Type == PathFeatureType.Line ? "선" : "점";
+        public string TypeDescription => Feature.Type == PathFeatureType.Line ? "Line" : "Point";
 
         public double? X
         {
