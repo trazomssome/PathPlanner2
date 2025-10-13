@@ -37,6 +37,13 @@ namespace DispenserEditor.Controls
         private const double ZoomStep = 1.1;
         private double _zoomFactor = DefaultZoom;
         private double _baseDisplayScale = 1.0;
+        private bool _isPanning;
+        private bool _panMoved;
+        private bool _pendingLineCompletion;
+        private Point _panStart;
+        private Vector _panOffset = new Vector();
+        private Vector _panStartOffset;
+        private readonly TranslateTransform _panTransform = new TranslateTransform();
 
         public PathRecipe Recipe
         {
@@ -51,6 +58,8 @@ namespace DispenserEditor.Controls
             InitializeComponent();
             _viewModel = new PathEditorViewModel();
             DataContext = _viewModel;
+            CanvasContainer.RenderTransform = _panTransform;
+            ApplyPanOffset();
 
             Loaded += OnLoaded;
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -304,6 +313,7 @@ namespace DispenserEditor.Controls
                 ReferenceImage.Height = double.NaN;
             }
 
+            ApplyPanOffset();
             RenderFeatures();
         }
 
@@ -362,6 +372,10 @@ namespace DispenserEditor.Controls
             }
 
             _zoomFactor = zoom;
+            if (forceUpdate)
+            {
+                ResetPan();
+            }
             UpdateCanvasSize();
         }
 
@@ -778,6 +792,14 @@ namespace DispenserEditor.Controls
         private void OnCanvasMouseMove(object sender, MouseEventArgs e)
         {
             var position = e.GetPosition(DrawingCanvas);
+
+            if (_isPanning)
+            {
+                PanTo(position);
+                UpdateMousePositionIndicator(position);
+                return;
+            }
+
             UpdateMousePositionIndicator(position);
 
             if (!_isDragging)
@@ -839,17 +861,34 @@ namespace DispenserEditor.Controls
 
         private void OnCanvasRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (_viewModel.CurrentMode == DrawingMode.Line && _activeLineFeature != null)
-            {
-                if (_activeLineFeature.Points.Count < 2)
-                {
-                    _viewModel.Features.Remove(_activeLineFeature);
-                    _viewModel.SaveSnapshot();
-                }
+            var position = e.GetPosition(DrawingCanvas);
+            _pendingLineCompletion = _viewModel.CurrentMode == DrawingMode.Line && _activeLineFeature != null;
+            _isPanning = true;
+            _panMoved = false;
+            _panStart = position;
+            _panStartOffset = _panOffset;
+            DrawingCanvas.CaptureMouse();
+            e.Handled = true;
+        }
 
-                _activeLineFeature = null;
-                _viewModel.StatusMessage = "Completed line input.";
+        private void OnCanvasRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isPanning)
+            {
+                DrawingCanvas.ReleaseMouseCapture();
+                _isPanning = false;
+                if (_pendingLineCompletion && !_panMoved)
+                {
+                    CompleteLineInput();
+                }
             }
+            else if (_pendingLineCompletion)
+            {
+                CompleteLineInput();
+            }
+
+            _pendingLineCompletion = false;
+            _panMoved = false;
         }
 
         private bool TryFindPoint(Point canvasPoint, double radius, out PathFeature feature, out PathPoint point)
@@ -1033,6 +1072,54 @@ namespace DispenserEditor.Controls
         {
             _viewModel.SetCenter(_viewModel.Recipe.CenterX, _viewModel.Recipe.CenterY);
             RenderFeatures();
+        }
+
+        private void ApplyPanOffset()
+        {
+            _panTransform.X = _panOffset.X;
+            _panTransform.Y = _panOffset.Y;
+        }
+
+        private void ResetPan()
+        {
+            _panOffset = new Vector();
+            ApplyPanOffset();
+        }
+
+        private void PanTo(Point position)
+        {
+            var delta = position - _panStart;
+            if (!_panMoved && delta.Length > 2)
+            {
+                _panMoved = true;
+            }
+
+            var newOffset = _panStartOffset + delta;
+            if (!AreVectorsClose(newOffset, _panOffset))
+            {
+                _panOffset = newOffset;
+                ApplyPanOffset();
+            }
+        }
+
+        private void CompleteLineInput()
+        {
+            if (_viewModel.CurrentMode == DrawingMode.Line && _activeLineFeature != null)
+            {
+                if (_activeLineFeature.Points.Count < 2)
+                {
+                    _viewModel.Features.Remove(_activeLineFeature);
+                    _viewModel.SaveSnapshot();
+                }
+
+                _activeLineFeature = null;
+                _viewModel.StatusMessage = "Completed line input.";
+            }
+        }
+
+        private static bool AreVectorsClose(Vector a, Vector b)
+        {
+            return Math.Abs(a.X - b.X) < 0.01 && Math.Abs(a.Y - b.Y) < 0.01;
         }
     }
 }

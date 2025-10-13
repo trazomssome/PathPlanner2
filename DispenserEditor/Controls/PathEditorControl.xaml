@@ -237,6 +237,7 @@
                             ClipToBounds="True"
                             MouseLeftButtonDown="OnCanvasLeftButtonDown"
                             MouseRightButtonDown="OnCanvasRightButtonDown"
+                            MouseRightButtonUp="OnCanvasRightButtonUp"
                             MouseMove="OnCanvasMouseMove"
                             MouseLeave="OnCanvasMouseLeave"
                             MouseLeftButtonUp="OnCanvasLeftButtonUp" />
