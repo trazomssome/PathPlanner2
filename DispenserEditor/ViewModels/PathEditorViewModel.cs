@@ -32,6 +32,7 @@ namespace DispenserEditor.ViewModels
         private readonly Stack<string> _undoStack = new Stack<string>();
         private readonly Stack<string> _redoStack = new Stack<string>();
         private PathRecipe _recipe;
+        private PathRecipeItem _selectedItem = null;
         private PathFeature _selectedFeature = null;
         private PathPoint _selectedPoint = null;
         private FeatureListEntry _selectedEntry = null;
@@ -60,18 +61,105 @@ namespace DispenserEditor.ViewModels
                 {
                     _recipe = value;
                     RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(Items));
                     RaisePropertyChanged(nameof(Features));
                 }
             }
         }
 
-        public ObservableCollection<PathFeature> Features => Recipe?.Features;
+        public ObservableCollection<PathRecipeItem> Items => Recipe?.Items;
+
+        public PathRecipeItem SelectedItem
+        {
+            get => _selectedItem;
+            set
+            {
+                if (SetProperty(ref _selectedItem, value))
+                {
+                    if (Recipe != null)
+                    {
+                        Recipe.SelectedItem = value;
+                    }
+
+                    RaisePropertyChanged(nameof(Features));
+                    _appliedCenterX = SelectedItem?.CenterX ?? 0;
+                    _appliedCenterY = SelectedItem?.CenterY ?? 0;
+                    RaisePropertyChanged(nameof(AppliedCenterX));
+                    RaisePropertyChanged(nameof(AppliedCenterY));
+                    UpdateFeatureEntries();
+                    SelectedFeature = SelectedItem?.Features.FirstOrDefault();
+                }
+            }
+        }
+
+        public ObservableCollection<PathFeature> Features => SelectedItem?.Features;
 
         public ObservableCollection<FeatureListEntry> FeatureEntries { get; }
 
         public void LoadRecipe(PathRecipe recipe)
         {
             LoadRecipe(recipe, initializeHistory: true);
+        }
+
+        public void AddRecipeItem(string name = null)
+        {
+            if (Recipe == null)
+            {
+                return;
+            }
+
+            var itemName = string.IsNullOrWhiteSpace(name) ? $"Recipe Item {Recipe.Items.Count + 1}" : name;
+            var item = new PathRecipeItem { Name = itemName };
+            Recipe.Items.Add(item);
+            SelectedItem = item;
+            SaveSnapshot();
+            StatusMessage = $"Added {item.Name}.";
+        }
+
+        public void RemoveSelectedItem()
+        {
+            if (Recipe == null || SelectedItem == null)
+            {
+                return;
+            }
+
+            if (Recipe.Items.Count <= 1)
+            {
+                StatusMessage = "At least one recipe item must remain.";
+                return;
+            }
+
+            var index = Recipe.Items.IndexOf(SelectedItem);
+            if (index < 0)
+            {
+                return;
+            }
+
+            var removedName = SelectedItem.Name;
+            Recipe.Items.RemoveAt(index);
+            var nextIndex = Math.Min(index, Recipe.Items.Count - 1);
+            SelectedItem = Recipe.Items[nextIndex];
+            SaveSnapshot();
+            StatusMessage = $"Removed {removedName}.";
+        }
+
+        private void EnsureDefaultItem()
+        {
+            if (Recipe == null)
+            {
+                return;
+            }
+
+            if (Recipe.Items.Count == 0)
+            {
+                var item = new PathRecipeItem { Name = $"Recipe Item {Recipe.Items.Count + 1}" };
+                Recipe.Items.Add(item);
+            }
+
+            if (Recipe.SelectedItem == null)
+            {
+                Recipe.SelectedItem = Recipe.Items.FirstOrDefault();
+            }
         }
 
         private void LoadRecipe(PathRecipe recipe, bool initializeHistory)
@@ -93,12 +181,8 @@ namespace DispenserEditor.ViewModels
 
             Recipe = recipe;
             AttachRecipe(Recipe);
-            _appliedCenterX = Recipe.CenterX;
-            _appliedCenterY = Recipe.CenterY;
-            RaisePropertyChanged(nameof(AppliedCenterX));
-            RaisePropertyChanged(nameof(AppliedCenterY));
-            UpdateFeatureEntries();
-            SelectedFeature = Recipe.Features.FirstOrDefault();
+            EnsureDefaultItem();
+            SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
 
             if (initializeHistory)
             {
@@ -270,7 +354,7 @@ namespace DispenserEditor.ViewModels
 
         public void RemoveSelectedFeature()
         {
-            if (SelectedFeature == null)
+            if (Features == null || SelectedFeature == null)
             {
                 return;
             }
@@ -282,6 +366,11 @@ namespace DispenserEditor.ViewModels
 
         public void EnsureFeatureNames()
         {
+            if (Features == null)
+            {
+                return;
+            }
+
             for (int i = 0; i < Features.Count; i++)
             {
                 if (string.IsNullOrWhiteSpace(Features[i].Name))
@@ -293,6 +382,11 @@ namespace DispenserEditor.ViewModels
 
         public void ShiftAllPoints(double offsetX, double offsetY)
         {
+            if (Features == null)
+            {
+                return;
+            }
+
             if (Math.Abs(offsetX) < double.Epsilon && Math.Abs(offsetY) < double.Epsilon)
             {
                 return;
@@ -322,10 +416,15 @@ namespace DispenserEditor.ViewModels
                 ShiftAllPoints(deltaX, deltaY);
             }
 
-            Recipe.CenterX = x;
-            Recipe.CenterY = y;
-            _appliedCenterX = Recipe.CenterX;
-            _appliedCenterY = Recipe.CenterY;
+            if (SelectedItem == null)
+            {
+                return;
+            }
+
+            SelectedItem.CenterX = x;
+            SelectedItem.CenterY = y;
+            _appliedCenterX = SelectedItem.CenterX;
+            _appliedCenterY = SelectedItem.CenterY;
             RaisePropertyChanged(nameof(AppliedCenterX));
             RaisePropertyChanged(nameof(AppliedCenterY));
             if (commit)
@@ -374,17 +473,47 @@ namespace DispenserEditor.ViewModels
 
         private void AttachRecipe(PathRecipe recipe)
         {
-            recipe.Features.CollectionChanged += OnFeaturesCollectionChanged;
-            foreach (var feature in recipe.Features)
+            recipe.Items.CollectionChanged += OnItemsCollectionChanged;
+            foreach (var item in recipe.Items)
             {
-                AttachFeature(feature);
+                AttachItem(item);
             }
         }
 
         private void DetachRecipe(PathRecipe recipe)
         {
-            recipe.Features.CollectionChanged -= OnFeaturesCollectionChanged;
-            foreach (var feature in recipe.Features)
+            recipe.Items.CollectionChanged -= OnItemsCollectionChanged;
+            foreach (var item in recipe.Items)
+            {
+                DetachItem(item);
+            }
+        }
+
+        private void AttachItem(PathRecipeItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            item.PropertyChanged += OnItemPropertyChanged;
+            item.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            foreach (var feature in item.Features)
+            {
+                AttachFeature(feature);
+            }
+        }
+
+        private void DetachItem(PathRecipeItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            item.PropertyChanged -= OnItemPropertyChanged;
+            item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            foreach (var feature in item.Features)
             {
                 DetachFeature(feature);
             }
@@ -407,6 +536,79 @@ namespace DispenserEditor.ViewModels
             foreach (var point in feature.Points)
             {
                 point.PropertyChanged -= OnPointPropertyChanged;
+            }
+        }
+
+        private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, SelectedItem))
+            {
+                return;
+            }
+
+            if (e.PropertyName == nameof(PathRecipeItem.CenterX) || e.PropertyName == nameof(PathRecipeItem.CenterY))
+            {
+                _appliedCenterX = SelectedItem.CenterX;
+                _appliedCenterY = SelectedItem.CenterY;
+                RaisePropertyChanged(nameof(AppliedCenterX));
+                RaisePropertyChanged(nameof(AppliedCenterY));
+            }
+            else if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity) ||
+                     e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
+            {
+                UpdateFeatureEntries();
+            }
+        }
+
+        private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (PathRecipeItem item in e.OldItems)
+                {
+                    DetachItem(item);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathRecipeItem item in e.NewItems)
+                {
+                    AttachItem(item);
+                }
+            }
+
+            EnsureDefaultItem();
+            if (!Recipe.Items.Contains(SelectedItem))
+            {
+                SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
+            }
+
+            RaisePropertyChanged(nameof(Items));
+        }
+
+        private void OnFeaturesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (PathFeature feature in e.OldItems)
+                {
+                    DetachFeature(feature);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathFeature feature in e.NewItems)
+                {
+                    AttachFeature(feature);
+                }
+            }
+
+            if (ReferenceEquals(sender, SelectedItem?.Features))
+            {
+                RaisePropertyChanged(nameof(Features));
+                UpdateFeatureEntries();
             }
         }
 
@@ -449,30 +651,44 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
-            Recipe.DefaultSpeed = restored.DefaultSpeed;
-            Recipe.OverlayOpacity = restored.OverlayOpacity;
-            Recipe.PixelsPerMillimetre = restored.PixelsPerMillimetre;
-            Recipe.CenterX = restored.CenterX;
-            Recipe.CenterY = restored.CenterY;
-            Recipe.SchemaVersion = restored.SchemaVersion;
-            _appliedCenterX = Recipe.CenterX;
-            _appliedCenterY = Recipe.CenterY;
-            RaisePropertyChanged(nameof(AppliedCenterX));
-            RaisePropertyChanged(nameof(AppliedCenterY));
+            DetachRecipe(Recipe);
 
-            Recipe.Features.Clear();
-            foreach (var feature in restored.Features)
+            Recipe.Name = restored.Name;
+            Recipe.SchemaVersion = restored.SchemaVersion;
+
+            Recipe.Items.Clear();
+            foreach (var item in restored.Items)
             {
-                Recipe.Features.Add(feature);
+                Recipe.Items.Add(item);
             }
 
-            SelectedFeature = Recipe.Features.FirstOrDefault();
+            AttachRecipe(Recipe);
+            EnsureDefaultItem();
+            SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
+
+            if (SelectedItem != null)
+            {
+                _appliedCenterX = SelectedItem.CenterX;
+                _appliedCenterY = SelectedItem.CenterY;
+                RaisePropertyChanged(nameof(AppliedCenterX));
+                RaisePropertyChanged(nameof(AppliedCenterY));
+            }
+
+            SelectedFeature = SelectedItem?.Features.FirstOrDefault();
             StatusMessage = "Recipe restored";
+            RaisePropertyChanged(nameof(Items));
+            RaisePropertyChanged(nameof(Features));
             UpdateFeatureEntries();
         }
 
         private void UpdateSelection(PathFeature feature)
         {
+            if (Features == null)
+            {
+                SelectedPoint = null;
+                return;
+            }
+
             foreach (var f in Features)
             {
                 f.IsSelected = f == feature;
@@ -497,6 +713,13 @@ namespace DispenserEditor.ViewModels
                 entry.Dispose();
             }
             FeatureEntries.Clear();
+
+            if (Features == null)
+            {
+                UpdateSelectedEntry(null, false);
+                return;
+            }
+
             foreach (var feature in Features)
             {
                 if (feature.Type == PathFeatureType.Line)
