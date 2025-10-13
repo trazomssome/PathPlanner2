@@ -14,6 +14,8 @@ namespace DispenserEditor.Models
         private bool _dispenseEnabled = true;
         private bool _autoSmoothing = true;
         private bool _useCustomSpeed;
+        private bool _isSingle = true;
+        private int _lineGroup;
 
         [JsonProperty("x")]
         public double X
@@ -69,6 +71,20 @@ namespace DispenserEditor.Models
         {
             get => _useCustomSpeed;
             set => SetProperty(ref _useCustomSpeed, value);
+        }
+
+        [JsonProperty("isSingle")]
+        public bool IsSingle
+        {
+            get => _isSingle;
+            set => SetProperty(ref _isSingle, value);
+        }
+
+        [JsonProperty("lineGroup")]
+        public int LineGroup
+        {
+            get => _lineGroup;
+            set => SetProperty(ref _lineGroup, value);
         }
 
         private static double Clamp(double value, double min, double max)
