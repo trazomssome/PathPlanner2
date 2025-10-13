@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+             xmlns:prpt="http://propertytools.org/wpf"
              mc:Ignorable="d"
              MinHeight="600"
              MinWidth="1024">
@@ -209,8 +210,7 @@
 
             <Separator />
 
-            <TextBlock Text="Pixels/mm:" />
-            <TextBox Text="{Binding Recipe.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            
             <TextBlock Text="Opacity:" />
             <Slider Minimum="0" Maximum="1" Value="{Binding Recipe.OverlayOpacity, Mode=TwoWay}" />
             <Button Click="OnResetZoom" Margin="8,0,0,0">
@@ -270,27 +270,59 @@
             </Grid.RowDefinitions>
 
             <GroupBox Header="Recipe Information" Margin="0,0,0,8">
-                <StackPanel Orientation="Vertical" Margin="8">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBlock Text="Default Speed" Width="80" VerticalAlignment="Center" />
-                        <TextBox Width="100" Text="{Binding Recipe.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBlock Text="Center X" Width="80" VerticalAlignment="Center" />
-                        <TextBox Width="100" Text="{Binding Recipe.CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Text="Center Y" Width="60" Margin="12,0,0,0" VerticalAlignment="Center" />
-                        <TextBox Width="100" Text="{Binding Recipe.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Content="Apply Center" Margin="12,0,0,0" Click="OnApplyCenter" />
-                    </StackPanel>
-                </StackPanel>
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="2"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Default Speed" 
+                                   VerticalAlignment="Center" 
+                                   Grid.Column="0"
+                                   Grid.Row="0"/>
+                    <TextBox Text="{Binding Recipe.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   Grid.Column="1"
+                                   Grid.Row="0"/>
+                    <TextBlock Text="Pixels/mm:" 
+                                   Grid.Column="3"
+                                   Grid.Row="0"/>
+                    <TextBox VerticalAlignment="Center" Text="{Binding Recipe.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                   Grid.Column="4"
+                                   Grid.Row="0"/>
+
+                    <TextBlock Text="Center X" VerticalAlignment="Center"  
+                                   Grid.Column="0"
+                                   Grid.Row="2"/>
+                    <TextBox Text="{Binding Recipe.CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Grid.Column="1"
+                                 Grid.Row="2"/>
+                    <TextBlock Text="Center Y"  VerticalAlignment="Center" 
+                                 Grid.Column="3"
+                                 Grid.Row="2"/>
+                    <TextBox Text="{Binding Recipe.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                 Grid.Column="4"
+                                 Grid.Row="2"/>
+                    <Button Content="Apply Center" Click="OnApplyCenter" 
+                                 Grid.Column="6"
+                                 Grid.Row="2"/>
+                </Grid>
             </GroupBox>
 
             <GroupBox Header="Features" Grid.Row="1">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="7*" />
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="3*" />
                     </Grid.RowDefinitions>
 
                     <DataGrid x:Name="FeatureGrid"
@@ -319,7 +351,11 @@
                         <Button Content="Delete" Click="OnDeleteFeature" Margin="4,0" />
                     </StackPanel>
 
-                    <Border Grid.Row="2" BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="8" Padding="8">
+                    <prpt:PropertyGrid Grid.Row="2" SelectedObject="{Binding SelectedFeature}" />
+
+
+
+                    <!--<Border Grid.Row="2" BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="8" Padding="8">
                         <StackPanel>
                             <TextBlock Text="Selected Feature" FontWeight="Bold" Margin="0,0,0,6" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -350,7 +386,7 @@
                                 <CheckBox Content="Auto Smoothing" Margin="12,0,0,0" IsChecked="{Binding SelectedFeature.AutoSmoothing, Mode=TwoWay}" />
                             </StackPanel>
                         </StackPanel>
-                    </Border>
+                    </Border>-->
                 </Grid>
             </GroupBox>
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using DispenserEditor.Infrastructure;
 using Newtonsoft.Json;
 
@@ -92,6 +93,7 @@ namespace DispenserEditor.Models
         }
 
         [JsonProperty("points")]
+        [Browsable(false)]
         public ObservableCollection<PathPoint> Points { get; }
 
         private static double Clamp(double value, double min, double max)
