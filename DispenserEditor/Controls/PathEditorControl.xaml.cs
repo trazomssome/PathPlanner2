@@ -255,6 +255,10 @@ namespace DispenserEditor.Controls
             {
                 SetZoom(DefaultZoom, forceUpdate: true);
             }
+            else if (e.PropertyName == nameof(PathEditorViewModel.ShowLinePoints))
+            {
+                RequestRenderFeatures();
+            }
         }
 
         private void OnRecipePropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -490,6 +494,8 @@ namespace DispenserEditor.Controls
                 return;
             }
 
+            var showLinePoints = _viewModel.ShowLinePoints;
+
             foreach (var feature in features)
             {
                 var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
@@ -512,6 +518,13 @@ namespace DispenserEditor.Controls
                     }
 
                     DrawingCanvas.Children.Add(polyline);
+                }
+
+                var showFeaturePoints = feature.Type != PathFeatureType.Line || showLinePoints;
+
+                if (!showFeaturePoints)
+                {
+                    continue;
                 }
 
                 foreach (var point in feature.Points)
@@ -765,7 +778,12 @@ namespace DispenserEditor.Controls
 
             foreach (var child in MainToolBar.Items.OfType<ToggleButton>())
             {
-                if (!ReferenceEquals(child, toggle))
+                if (ReferenceEquals(child, toggle))
+                {
+                    continue;
+                }
+
+                if (child.Tag is string childTag && Enum.TryParse(childTag, out DrawingMode _))
                 {
                     child.IsChecked = false;
                 }

@@ -45,6 +45,7 @@ namespace DispenserEditor.ViewModels
         private double _appliedCenterX;
         private double _appliedCenterY;
         private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
+        private bool _showLinePoints = true;
 
         public PathEditorViewModel()
         {
@@ -261,6 +262,18 @@ namespace DispenserEditor.ViewModels
         {
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
+        }
+
+        public bool ShowLinePoints
+        {
+            get => _showLinePoints;
+            set
+            {
+                if (SetProperty(ref _showLinePoints, value))
+                {
+                    StatusMessage = value ? "Line points visible." : "Line points hidden.";
+                }
+            }
         }
 
         public CrosshairMoveMode CrosshairMode
