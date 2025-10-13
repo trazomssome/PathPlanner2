@@ -212,7 +212,7 @@
 
             
             <TextBlock Text="Opacity:" />
-            <Slider Minimum="0" Maximum="1" Value="{Binding Recipe.OverlayOpacity, Mode=TwoWay}" />
+            <Slider Minimum="0" Maximum="1" Value="{Binding SelectedItem.OverlayOpacity, Mode=TwoWay}" />
             <Button Click="OnResetZoom" Margin="8,0,0,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <fa:IconBlock Icon="MagnifyingGlassMinus" Margin="0,0,6,0" />
@@ -266,11 +266,42 @@
         <Grid Grid.Row="1" Grid.Column="1" Margin="8" DataContext="{Binding}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <GroupBox Header="Recipe Information" Margin="0,0,0,8">
+            <GroupBox Header="Recipe Items" Margin="0,0,0,8">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100" />
+                        <ColumnDefinition />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="Current Item" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1"
+                              ItemsSource="{Binding Items}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              DisplayMemberPath="Name"
+                              Margin="8,0" />
+                    <Button Grid.Column="2" Content="Add" Width="60" Margin="8,0,0,0" Click="OnAddItem" />
+                    <Button Grid.Column="3" Content="Remove" Width="80" Margin="4,0,0,0" Click="OnRemoveItem" />
+
+                    <TextBlock Grid.Row="1" Text="Item Name" VerticalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBox Grid.Row="1"
+                             Grid.Column="1"
+                             Margin="8,8,0,0"
+                             Text="{Binding SelectedItem.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Recipe Information" Grid.Row="1" Margin="0,0,0,8">
                 <Grid Margin="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80"/>
@@ -291,26 +322,26 @@
                                    VerticalAlignment="Center" 
                                    Grid.Column="0"
                                    Grid.Row="0"/>
-                    <TextBox Text="{Binding Recipe.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox Text="{Binding SelectedItem.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                    Grid.Column="1"
                                    Grid.Row="0"/>
                     <TextBlock Text="Pixels/mm:" 
                                    Grid.Column="3"
                                    Grid.Row="0"/>
-                    <TextBox VerticalAlignment="Center" Text="{Binding Recipe.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                    <TextBox VerticalAlignment="Center" Text="{Binding SelectedItem.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    Grid.Column="4"
                                    Grid.Row="0"/>
 
                     <TextBlock Text="Center X" VerticalAlignment="Center"  
                                    Grid.Column="0"
                                    Grid.Row="2"/>
-                    <TextBox Text="{Binding Recipe.CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox Text="{Binding SelectedItem.CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  Grid.Column="1"
                                  Grid.Row="2"/>
                     <TextBlock Text="Center Y"  VerticalAlignment="Center" 
                                  Grid.Column="3"
                                  Grid.Row="2"/>
-                    <TextBox Text="{Binding Recipe.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                    <TextBox Text="{Binding SelectedItem.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  Grid.Column="4"
                                  Grid.Row="2"/>
                     <Button Content="Apply Center" Click="OnApplyCenter"
@@ -334,7 +365,7 @@
                 </Grid>
             </GroupBox>
 
-            <GroupBox Header="Features" Grid.Row="1">
+            <GroupBox Header="Features" Grid.Row="2">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="7*" />
@@ -355,6 +386,12 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="2*" IsReadOnly="True" />
                             <DataGridTextColumn Header="Type" Binding="{Binding TypeDescription}" Width="*" IsReadOnly="True" />
+                            <DataGridCheckBoxColumn Header="Single"
+                                                     Width="*"
+                                                     Binding="{Binding IsSingle, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="Line Group"
+                                                Width="*"
+                                                Binding="{Binding LineGroup, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                             <DataGridTextColumn Header="X"
                                                 Width="*"
                                                 Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
@@ -408,7 +445,7 @@
                 </Grid>
             </GroupBox>
 
-            <TextBlock Grid.Row="2" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
+            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
         </Grid>
 
         <StatusBar Grid.Row="2" Grid.ColumnSpan="2">

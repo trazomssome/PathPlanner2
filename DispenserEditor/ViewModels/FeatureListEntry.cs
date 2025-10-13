@@ -84,6 +84,32 @@ namespace DispenserEditor.ViewModels
             }
         }
 
+        public bool? IsSingle
+        {
+            get => Point?.IsSingle;
+            set
+            {
+                if (Point != null && value.HasValue)
+                {
+                    Point.IsSingle = value.Value;
+                    RaisePropertyChanged(nameof(IsSingle));
+                }
+            }
+        }
+
+        public int? LineGroup
+        {
+            get => Point?.LineGroup;
+            set
+            {
+                if (Point != null && value.HasValue)
+                {
+                    Point.LineGroup = value.Value;
+                    RaisePropertyChanged(nameof(LineGroup));
+                }
+            }
+        }
+
         public static FeatureListEntry ForPoint(PathFeature feature, PathPoint point)
         {
             return new FeatureListEntry(feature, point, -1);
@@ -119,9 +145,19 @@ namespace DispenserEditor.ViewModels
                 {
                     RaisePropertyChanged(nameof(Y));
                 }
+                else if (e.PropertyName == nameof(PathPoint.IsSingle))
+                {
+                    RaisePropertyChanged(nameof(IsSingle));
+                }
+                else if (e.PropertyName == nameof(PathPoint.LineGroup))
+                {
+                    RaisePropertyChanged(nameof(LineGroup));
+                }
             }
 
             RaisePropertyChanged(nameof(Coordinates));
+            RaisePropertyChanged(nameof(IsSingle));
+            RaisePropertyChanged(nameof(LineGroup));
         }
     }
 }
