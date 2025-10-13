@@ -1066,6 +1066,22 @@ namespace DispenserEditor.Controls
             _viewModel.SelectedFeature = _viewModel.Features.FirstOrDefault();
             _viewModel.SaveSnapshot();
             _viewModel.StatusMessage = $"Deleted {target.Name}.";
+            RenderFeatures();
+        }
+
+        private void OnClearFeatures(object sender, RoutedEventArgs e)
+        {
+            if (!_viewModel.Features.Any())
+            {
+                return;
+            }
+
+            _activeLineFeature = null;
+            _viewModel.Features.Clear();
+            _viewModel.SelectedFeature = null;
+            _viewModel.SaveSnapshot();
+            _viewModel.StatusMessage = "Cleared all features.";
+            RenderFeatures();
         }
 
         private void OnApplyCenter(object sender, RoutedEventArgs e)
