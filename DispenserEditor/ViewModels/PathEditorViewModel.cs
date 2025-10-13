@@ -449,28 +449,6 @@ namespace DispenserEditor.ViewModels
             SaveSnapshot();
         }
 
-        private void OnFeaturesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (e.OldItems != null)
-            {
-                foreach (PathFeature feature in e.OldItems)
-                {
-                    DetachFeature(feature);
-                }
-            }
-
-            if (e.NewItems != null)
-            {
-                foreach (PathFeature feature in e.NewItems)
-                {
-                    AttachFeature(feature);
-                }
-            }
-
-            RaisePropertyChanged(nameof(Features));
-            UpdateFeatureEntries();
-        }
-
         private void AttachRecipe(PathRecipe recipe)
         {
             recipe.Items.CollectionChanged += OnItemsCollectionChanged;
