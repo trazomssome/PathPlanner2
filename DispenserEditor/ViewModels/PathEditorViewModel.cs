@@ -641,10 +641,15 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
+            var previousSelection = Recipe.SelectedItem;
+            var previousIndex = previousSelection != null ? Recipe.Items.IndexOf(previousSelection) : -1;
+
             DetachRecipe(Recipe);
 
             Recipe.Name = restored.Name;
             Recipe.SchemaVersion = restored.SchemaVersion;
+
+            Recipe.SelectedItem = null;
 
             Recipe.Items.Clear();
             foreach (var item in restored.Items)
@@ -654,7 +659,21 @@ namespace DispenserEditor.ViewModels
 
             AttachRecipe(Recipe);
             EnsureDefaultItem();
-            SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
+
+            var targetSelection = Recipe.SelectedItem;
+            if (targetSelection == null && previousSelection != null)
+            {
+                if (previousIndex >= 0 && previousIndex < Recipe.Items.Count)
+                {
+                    targetSelection = Recipe.Items[previousIndex];
+                }
+                else
+                {
+                    targetSelection = Recipe.Items.FirstOrDefault(item => string.Equals(item.Name, previousSelection.Name, StringComparison.Ordinal));
+                }
+            }
+
+            SelectedItem = targetSelection ?? Recipe.Items.FirstOrDefault();
 
             if (SelectedItem != null)
             {
