@@ -109,7 +109,12 @@ namespace DispenserEditor.ViewModels
             }
 
             var itemName = string.IsNullOrWhiteSpace(name) ? $"Recipe Item {Recipe.Items.Count + 1}" : name;
-            var item = new PathRecipeItem { Name = itemName };
+            var item = new PathRecipeItem
+            {
+                Name = itemName,
+                CenterX = _appliedCenterX,
+                CenterY = _appliedCenterY
+            };
             Recipe.Items.Add(item);
             SelectedItem = item;
             SaveSnapshot();
