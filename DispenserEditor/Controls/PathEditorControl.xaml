@@ -349,6 +349,7 @@
                     </DataGrid>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8">
+                        <Button Content="Clear" Click="OnClearFeatures" Margin="4,0" />
                         <Button Content="Delete" Click="OnDeleteFeature" Margin="4,0" />
                     </StackPanel>
 
