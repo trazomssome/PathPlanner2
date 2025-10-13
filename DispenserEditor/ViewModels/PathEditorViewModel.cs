@@ -74,21 +74,28 @@ namespace DispenserEditor.ViewModels
             get => _selectedItem;
             set
             {
-                if (SetProperty(ref _selectedItem, value))
+                if (ReferenceEquals(_selectedItem, value))
                 {
-                    if (Recipe != null)
-                    {
-                        Recipe.SelectedItem = value;
-                    }
-
-                    RaisePropertyChanged(nameof(Features));
-                    _appliedCenterX = SelectedItem?.CenterX ?? 0;
-                    _appliedCenterY = SelectedItem?.CenterY ?? 0;
-                    RaisePropertyChanged(nameof(AppliedCenterX));
-                    RaisePropertyChanged(nameof(AppliedCenterY));
-                    UpdateFeatureEntries();
-                    SelectedFeature = SelectedItem?.Features.FirstOrDefault();
+                    return;
                 }
+
+                _selectedItem = value;
+
+                _appliedCenterX = _selectedItem?.CenterX ?? 0;
+                _appliedCenterY = _selectedItem?.CenterY ?? 0;
+
+                if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
+                {
+                    Recipe.SelectedItem = value;
+                }
+
+                RaisePropertyChanged(nameof(SelectedItem));
+                RaisePropertyChanged(nameof(Features));
+                RaisePropertyChanged(nameof(AppliedCenterX));
+                RaisePropertyChanged(nameof(AppliedCenterY));
+
+                UpdateFeatureEntries();
+                SelectedFeature = SelectedItem?.Features.FirstOrDefault();
             }
         }
 
