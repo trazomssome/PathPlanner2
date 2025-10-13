@@ -21,6 +21,12 @@ namespace DispenserEditor.ViewModels
         Line
     }
 
+    public enum CrosshairMoveMode
+    {
+        KeepPointsFixed,
+        MovePointsWithCrosshair
+    }
+
     public class PathEditorViewModel : ObservableObject
     {
         private readonly Stack<string> _undoStack = new Stack<string>();
@@ -37,6 +43,7 @@ namespace DispenserEditor.ViewModels
         private string _statusMessage = string.Empty;
         private double _appliedCenterX;
         private double _appliedCenterY;
+        private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
 
         public PathEditorViewModel()
         {
@@ -158,6 +165,12 @@ namespace DispenserEditor.ViewModels
         {
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
+        }
+
+        public CrosshairMoveMode CrosshairMode
+        {
+            get => _crosshairMode;
+            set => SetProperty(ref _crosshairMode, value);
         }
 
         public bool CanUndo => _undoStack.Count > 1;
@@ -304,7 +317,11 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
-            ShiftAllPoints(deltaX, deltaY);
+            if (CrosshairMode == CrosshairMoveMode.KeepPointsFixed)
+            {
+                ShiftAllPoints(deltaX, deltaY);
+            }
+
             Recipe.CenterX = x;
             Recipe.CenterY = y;
             _appliedCenterX = Recipe.CenterX;
