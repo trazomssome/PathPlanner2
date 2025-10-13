@@ -44,6 +44,8 @@ namespace DispenserEditor.Controls
         private Vector _panOffset = new Vector();
         private Vector _panStartOffset;
         private readonly TranslateTransform _panTransform = new TranslateTransform();
+        private bool _suppressRendering;
+        private bool _renderPending;
 
         public PathRecipe Recipe
         {
@@ -65,6 +67,35 @@ namespace DispenserEditor.Controls
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
             SetCurrentValue(RecipeProperty, _viewModel.Recipe);
+        }
+
+        private void RequestRenderFeatures()
+        {
+            if (_suppressRendering)
+            {
+                _renderPending = true;
+                return;
+            }
+
+            _renderPending = false;
+            RenderFeatures();
+        }
+
+        private void ExecuteWithRenderSuppressed(Action action)
+        {
+            _suppressRendering = true;
+            _renderPending = false;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                _suppressRendering = false;
+            }
+
+            _renderPending = false;
+            RenderFeatures();
         }
 
         private static void OnRecipeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -100,7 +131,7 @@ namespace DispenserEditor.Controls
                 SetCurrentValue(RecipeProperty, _viewModel.Recipe);
             }
             AttachRecipeHandlers(newRecipe);
-            RenderFeatures();
+            RequestRenderFeatures();
         }
 
         private void AttachRecipeHandlers(PathRecipe recipe)
@@ -138,14 +169,14 @@ namespace DispenserEditor.Controls
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            RenderFeatures();
+            RequestRenderFeatures();
         }
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(_viewModel.SelectedFeature))
             {
-                RenderFeatures();
+                RequestRenderFeatures();
             }
             else if (e.PropertyName == nameof(_viewModel.ReferenceImage))
             {
@@ -158,14 +189,14 @@ namespace DispenserEditor.Controls
             if (e.PropertyName == nameof(PathRecipe.OverlayOpacity) ||
                 e.PropertyName == nameof(PathRecipe.PixelsPerMillimetre))
             {
-                RenderFeatures();
+                RequestRenderFeatures();
                 return;
             }
 
             if (e.PropertyName == nameof(PathRecipe.CenterX) ||
                 e.PropertyName == nameof(PathRecipe.CenterY))
             {
-                Dispatcher.BeginInvoke(new Action(RenderFeatures), DispatcherPriority.Render);
+                Dispatcher.BeginInvoke(new Action(RequestRenderFeatures), DispatcherPriority.Render);
             }
         }
 
@@ -187,7 +218,7 @@ namespace DispenserEditor.Controls
                 }
             }
 
-            RenderFeatures();
+            RequestRenderFeatures();
         }
 
         private void AttachFeatureHandlers(PathFeature feature)
@@ -212,7 +243,7 @@ namespace DispenserEditor.Controls
 
         private void OnFeaturePropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            RenderFeatures();
+            RequestRenderFeatures();
         }
 
         private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -233,12 +264,12 @@ namespace DispenserEditor.Controls
                 }
             }
 
-            RenderFeatures();
+            RequestRenderFeatures();
         }
 
         private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            RenderFeatures();
+            RequestRenderFeatures();
         }
 
         private void OnFeatureGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
@@ -517,7 +548,15 @@ namespace DispenserEditor.Controls
             }
 
             _crosshairChanged = true;
-            _viewModel.SetCenter(centerX, centerY, commit: false, updateStatus: false);
+            if (_viewModel.CrosshairMode == CrosshairMoveMode.MovePointsWithCrosshair)
+            {
+                ExecuteWithRenderSuppressed(() =>
+                    _viewModel.SetCenter(centerX, centerY, commit: false, updateStatus: false));
+            }
+            else
+            {
+                _viewModel.SetCenter(centerX, centerY, commit: false, updateStatus: false);
+            }
         }
 
         private double GetScale()

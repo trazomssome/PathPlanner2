@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              xmlns:prpt="http://propertytools.org/wpf"
+             xmlns:viewModels="clr-namespace:DispenserEditor.ViewModels"
              mc:Ignorable="d"
              MinHeight="600"
              MinWidth="1024">
@@ -284,6 +285,7 @@
                         <RowDefinition/>
                         <RowDefinition Height="2"/>
                         <RowDefinition/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="Default Speed" 
                                    VerticalAlignment="Center" 
@@ -311,9 +313,24 @@
                     <TextBox Text="{Binding Recipe.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                  Grid.Column="4"
                                  Grid.Row="2"/>
-                    <Button Content="Apply Center" Click="OnApplyCenter" 
+                    <Button Content="Apply Center" Click="OnApplyCenter"
                                  Grid.Column="6"
                                  Grid.Row="2"/>
+
+                    <TextBlock Text="Crosshair Mode"
+                                   Grid.Column="0"
+                                   Grid.Row="3"
+                                   VerticalAlignment="Center"
+                                   Margin="0,6,0,0"/>
+                    <ComboBox Grid.Column="1"
+                              Grid.Row="3"
+                              Grid.ColumnSpan="6"
+                              Margin="0,6,0,0"
+                              SelectedValue="{Binding CrosshairMode, Mode=TwoWay}"
+                              SelectedValuePath="Tag">
+                        <ComboBoxItem Tag="{x:Static viewModels:CrosshairMoveMode.KeepPointsFixed}">Points stay fixed</ComboBoxItem>
+                        <ComboBoxItem Tag="{x:Static viewModels:CrosshairMoveMode.MovePointsWithCrosshair}">Move points with crosshair</ComboBoxItem>
+                    </ComboBox>
                 </Grid>
             </GroupBox>
 
