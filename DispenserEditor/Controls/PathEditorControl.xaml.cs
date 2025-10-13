@@ -484,7 +484,13 @@ namespace DispenserEditor.Controls
 
             DrawCrosshair(origin);
 
-            foreach (var feature in _viewModel.Features)
+            var features = _viewModel.Features;
+            if (features == null)
+            {
+                return;
+            }
+
+            foreach (var feature in features)
             {
                 var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
                 strokeBrush = strokeBrush.Clone();
