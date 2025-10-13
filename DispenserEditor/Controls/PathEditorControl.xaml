@@ -22,17 +22,16 @@
 
         <ToolBar x:Name="MainToolBar"
                  Grid.ColumnSpan="2"
-                 Background="#FF1F2933"
-                 Foreground="White"
+                 Background="#e0e4e9"
                  Padding="6"
-                 BorderThickness="0,0,0,1"
+                 BorderThickness="0"
                  BorderBrush="#FF111820"
                  Panel.ZIndex="1"
                  ToolBarTray.IsLocked="True">
             <ToolBar.Resources>
-                <SolidColorBrush x:Key="ToolbarButtonBackground" Color="#FF2E3A47" />
-                <SolidColorBrush x:Key="ToolbarButtonHoverBackground" Color="#FF3A4A5A" />
-                <SolidColorBrush x:Key="ToolbarButtonPressedBackground" Color="#FF1B262F" />
+                <SolidColorBrush x:Key="ToolbarButtonBackground" Color="#e0e4e9" />
+                <SolidColorBrush x:Key="ToolbarButtonHoverBackground" Color="#CBFFF3" />
+                <SolidColorBrush x:Key="ToolbarButtonPressedBackground" Color="#AEDA97" />
                 <SolidColorBrush x:Key="ToolbarButtonBorder" Color="#FF3E4B59" />
 
                 <Style TargetType="Button" BasedOn="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
@@ -41,7 +40,7 @@
                     <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
                     <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
                     <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Foreground" Value="Black" />
                     <Setter Property="Cursor" Value="Hand" />
                     <Setter Property="Template">
                         <Setter.Value>
@@ -76,7 +75,7 @@
                     <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
                     <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
                     <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Foreground" Value="Black" />
                     <Setter Property="Cursor" Value="Hand" />
                     <Setter Property="Template">
                         <Setter.Value>
@@ -124,14 +123,14 @@
                 </Style>
 
                 <Style TargetType="TextBlock">
-                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Foreground" Value="Black" />
                     <Setter Property="VerticalAlignment" Value="Center" />
                     <Setter Property="Margin" Value="8,0,4,0" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </Style>
 
                 <Style TargetType="fa:IconBlock">
-                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="Foreground" Value="Black" />
                     <Setter Property="Width" Value="16" />
                     <Setter Property="Height" Value="16" />
                     <Setter Property="VerticalAlignment" Value="Center" />
