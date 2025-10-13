@@ -142,12 +142,12 @@ namespace DispenserEditor.Controls
             }
 
             _currentRecipe = recipe;
-            recipe.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            recipe.Items.CollectionChanged += OnItemsCollectionChanged;
             recipe.PropertyChanged += OnRecipePropertyChanged;
 
-            foreach (var feature in recipe.Features)
+            foreach (var item in recipe.Items)
             {
-                AttachFeatureHandlers(feature);
+                AttachItemHandlers(item);
             }
         }
 
@@ -158,12 +158,84 @@ namespace DispenserEditor.Controls
                 return;
             }
 
-            recipe.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            recipe.Items.CollectionChanged -= OnItemsCollectionChanged;
             recipe.PropertyChanged -= OnRecipePropertyChanged;
 
-            foreach (var feature in recipe.Features)
+            foreach (var item in recipe.Items)
+            {
+                DetachItemHandlers(item);
+            }
+        }
+
+        private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (PathRecipeItem item in e.OldItems)
+                {
+                    DetachItemHandlers(item);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathRecipeItem item in e.NewItems)
+                {
+                    AttachItemHandlers(item);
+                }
+            }
+
+            RequestRenderFeatures();
+        }
+
+        private void AttachItemHandlers(PathRecipeItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            item.PropertyChanged += OnItemPropertyChanged;
+            item.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            foreach (var feature in item.Features)
+            {
+                AttachFeatureHandlers(feature);
+            }
+        }
+
+        private void DetachItemHandlers(PathRecipeItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            item.PropertyChanged -= OnItemPropertyChanged;
+            item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            foreach (var feature in item.Features)
             {
                 DetachFeatureHandlers(feature);
+            }
+        }
+
+        private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, _viewModel.SelectedItem))
+            {
+                return;
+            }
+
+            if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity) ||
+                e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
+            {
+                RequestRenderFeatures();
+                return;
+            }
+
+            if (e.PropertyName == nameof(PathRecipeItem.CenterX) ||
+                e.PropertyName == nameof(PathRecipeItem.CenterY))
+            {
+                Dispatcher.BeginInvoke(new Action(RequestRenderFeatures), DispatcherPriority.Render);
             }
         }
 
@@ -174,7 +246,8 @@ namespace DispenserEditor.Controls
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(_viewModel.SelectedFeature))
+            if (e.PropertyName == nameof(_viewModel.SelectedFeature) ||
+                e.PropertyName == nameof(_viewModel.SelectedItem))
             {
                 RequestRenderFeatures();
             }
@@ -186,17 +259,9 @@ namespace DispenserEditor.Controls
 
         private void OnRecipePropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(PathRecipe.OverlayOpacity) ||
-                e.PropertyName == nameof(PathRecipe.PixelsPerMillimetre))
+            if (e.PropertyName == nameof(PathRecipe.SelectedItem))
             {
                 RequestRenderFeatures();
-                return;
-            }
-
-            if (e.PropertyName == nameof(PathRecipe.CenterX) ||
-                e.PropertyName == nameof(PathRecipe.CenterY))
-            {
-                Dispatcher.BeginInvoke(new Action(RequestRenderFeatures), DispatcherPriority.Render);
             }
         }
 
@@ -413,13 +478,19 @@ namespace DispenserEditor.Controls
         private void RenderFeatures()
         {
             DrawingCanvas.Children.Clear();
-            var opacity = _viewModel.Recipe.OverlayOpacity;
+            var opacity = _viewModel.SelectedItem?.OverlayOpacity ?? 1.0;
             var scale = GetScale();
             var origin = GetOrigin(scale);
 
             DrawCrosshair(origin);
 
-            foreach (var feature in _viewModel.Features)
+            var features = _viewModel.Features;
+            if (features == null)
+            {
+                return;
+            }
+
+            foreach (var feature in features)
             {
                 var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
                 strokeBrush = strokeBrush.Clone();
@@ -561,7 +632,7 @@ namespace DispenserEditor.Controls
 
         private double GetScale()
         {
-            var pixelsPerMillimetre = Math.Max(_viewModel.Recipe.PixelsPerMillimetre, 0.0001);
+            var pixelsPerMillimetre = Math.Max(_viewModel.SelectedItem?.PixelsPerMillimetre ?? 1.0, 0.0001);
             var displayScale = GetDisplayScale();
             return Math.Max(pixelsPerMillimetre * displayScale, 0.0001);
         }
@@ -754,6 +825,11 @@ namespace DispenserEditor.Controls
 
         private void CreatePointFeature(Point canvasPosition)
         {
+            if (_viewModel.Features == null)
+            {
+                return;
+            }
+
             var modelPoint = ToModel(canvasPosition);
             var feature = new PathFeature
             {
@@ -777,6 +853,11 @@ namespace DispenserEditor.Controls
 
         private void AppendLinePoint(Point canvasPosition)
         {
+            if (_viewModel.Features == null)
+            {
+                return;
+            }
+
             var modelPoint = ToModel(canvasPosition);
             if (_activeLineFeature == null)
             {
@@ -1091,7 +1172,7 @@ namespace DispenserEditor.Controls
         private void OnDeleteFeature(object sender, RoutedEventArgs e)
         {
             var target = _viewModel.SelectedFeature;
-            if (target == null)
+            if (target == null || _viewModel.Features == null)
             {
                 return;
             }
@@ -1110,7 +1191,7 @@ namespace DispenserEditor.Controls
 
         private void OnClearFeatures(object sender, RoutedEventArgs e)
         {
-            if (!_viewModel.Features.Any())
+            if (_viewModel.Features == null || !_viewModel.Features.Any())
             {
                 return;
             }
@@ -1123,9 +1204,26 @@ namespace DispenserEditor.Controls
             RenderFeatures();
         }
 
+        private void OnAddItem(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AddRecipeItem();
+            RequestRenderFeatures();
+        }
+
+        private void OnRemoveItem(object sender, RoutedEventArgs e)
+        {
+            _viewModel.RemoveSelectedItem();
+            RequestRenderFeatures();
+        }
+
         private void OnApplyCenter(object sender, RoutedEventArgs e)
         {
-            _viewModel.SetCenter(_viewModel.Recipe.CenterX, _viewModel.Recipe.CenterY);
+            if (_viewModel.SelectedItem == null)
+            {
+                return;
+            }
+
+            _viewModel.SetCenter(_viewModel.SelectedItem.CenterX, _viewModel.SelectedItem.CenterY);
             RenderFeatures();
         }
 
