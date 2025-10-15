@@ -393,22 +393,26 @@ namespace DispenserEditor.Controls
 
             if (width > 0 && !double.IsNaN(width))
             {
+                PanContent.Width = width;
                 DrawingCanvas.Width = width;
                 ReferenceImage.Width = width;
             }
             else
             {
+                PanContent.Width = double.NaN;
                 DrawingCanvas.Width = double.NaN;
                 ReferenceImage.Width = double.NaN;
             }
 
             if (height > 0 && !double.IsNaN(height))
             {
+                PanContent.Height = height;
                 DrawingCanvas.Height = height;
                 ReferenceImage.Height = height;
             }
             else
             {
+                PanContent.Height = double.NaN;
                 DrawingCanvas.Height = double.NaN;
                 ReferenceImage.Height = double.NaN;
             }
