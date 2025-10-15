@@ -37,6 +37,7 @@ namespace DispenserEditor.ViewModels
         private PathPoint _selectedPoint = null;
         private FeatureListEntry _selectedEntry = null;
         private bool _synchronizingSelection;
+        private bool _isUpdatingFeatureEntries;
         private DrawingMode _currentMode = DrawingMode.Move;
         private ImageSource _referenceImage = null;
         private double _imageWidth = 800;
@@ -745,57 +746,70 @@ namespace DispenserEditor.ViewModels
 
         private void UpdateFeatureEntries()
         {
-            var previousEntry = _selectedEntry;
-
-            foreach (var entry in FeatureEntries)
+            if (_isUpdatingFeatureEntries)
             {
-                entry.Dispose();
-            }
-            FeatureEntries.Clear();
-
-            if (Features == null)
-            {
-                UpdateSelectedEntry(null, false);
                 return;
             }
 
-            foreach (var feature in Features)
+            _isUpdatingFeatureEntries = true;
+
+            var previousEntry = _selectedEntry;
+
+            try
             {
-                if (feature.Type == PathFeatureType.Line)
+                foreach (var entry in FeatureEntries)
                 {
-                    for (int i = 0; i < feature.Points.Count; i++)
+                    entry.Dispose();
+                }
+                FeatureEntries.Clear();
+
+                if (Features == null)
+                {
+                    UpdateSelectedEntry(null, false);
+                    return;
+                }
+
+                foreach (var feature in Features)
+                {
+                    if (feature.Type == PathFeatureType.Line)
                     {
-                        var point = feature.Points[i];
-                        FeatureEntries.Add(FeatureListEntry.ForLinePoint(feature, point, i));
+                        for (int i = 0; i < feature.Points.Count; i++)
+                        {
+                            var point = feature.Points[i];
+                            FeatureEntries.Add(FeatureListEntry.ForLinePoint(feature, point, i));
+                        }
+                    }
+                    else
+                    {
+                        var point = feature.Points.FirstOrDefault();
+                        FeatureEntries.Add(FeatureListEntry.ForPoint(feature, point));
                     }
                 }
-                else
+            
+                FeatureListEntry target = null;
+                if (previousEntry != null)
                 {
-                    var point = feature.Points.FirstOrDefault();
-                    FeatureEntries.Add(FeatureListEntry.ForPoint(feature, point));
+                    target = FeatureEntries.FirstOrDefault(entry =>
+                        ReferenceEquals(entry.Feature, previousEntry.Feature) &&
+                        entry.SegmentIndex == previousEntry.SegmentIndex &&
+                        ReferenceEquals(entry.Point, previousEntry.Point));
                 }
-            }
+                if (target == null && SelectedFeature != null)
+                {
+                    target = FeatureEntries.FirstOrDefault(entry => ReferenceEquals(entry.Feature, SelectedFeature));
+                }
 
-            FeatureListEntry target = null;
-            if (previousEntry != null)
+                if (target == null && FeatureEntries.Count > 0)
+                {
+                    target = FeatureEntries.First();
+                }
+
+                UpdateSelectedEntry(target, false);
+            }
+            finally
             {
-                target = FeatureEntries.FirstOrDefault(entry =>
-                    ReferenceEquals(entry.Feature, previousEntry.Feature) &&
-                    entry.SegmentIndex == previousEntry.SegmentIndex &&
-                    ReferenceEquals(entry.Point, previousEntry.Point));
+                _isUpdatingFeatureEntries = false;
             }
-
-            if (target == null && SelectedFeature != null)
-            {
-                target = FeatureEntries.FirstOrDefault(entry => ReferenceEquals(entry.Feature, SelectedFeature));
-            }
-
-            if (target == null && FeatureEntries.Count > 0)
-            {
-                target = FeatureEntries.First();
-            }
-
-            UpdateSelectedEntry(target, false);
         }
 
         private void UpdateSelectedEntry(FeatureListEntry entry, bool updateFeature)
