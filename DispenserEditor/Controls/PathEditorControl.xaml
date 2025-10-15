@@ -231,41 +231,46 @@
         <Grid Grid.Row="1" Grid.Column="0" Margin="8">
             <Border x:Name="CanvasHost" BorderBrush="Gray" BorderThickness="1" Background="Black" SizeChanged="OnCanvasHostSizeChanged" ClipToBounds="True">
                 <Grid x:Name="CanvasContainer" MouseWheel="OnCanvasMouseWheel" ClipToBounds="True">
-                    <Image x:Name="ReferenceImage"
-                           Source="{Binding ReferenceImage}"
-                           Stretch="Uniform"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           SizeChanged="OnReferenceImageSizeChanged" />
-                    <Canvas x:Name="DrawingCanvas"
-                            Background="Transparent"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            ClipToBounds="True"
-                            MouseLeftButtonDown="OnCanvasLeftButtonDown"
-                            MouseRightButtonDown="OnCanvasRightButtonDown"
-                            MouseRightButtonUp="OnCanvasRightButtonUp"
-                            MouseMove="OnCanvasMouseMove"
-                            MouseLeave="OnCanvasMouseLeave"
-                            MouseLeftButtonUp="OnCanvasLeftButtonUp" />
-                    <Canvas x:Name="OverlayCanvas"
-                            Panel.ZIndex="1"
-                            Width="{Binding ElementName=DrawingCanvas, Path=ActualWidth}"
-                            Height="{Binding ElementName=DrawingCanvas, Path=ActualHeight}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            IsHitTestVisible="False">
-                        <Border x:Name="MousePositionPopup"
-                                Background="#CC000000"
-                                CornerRadius="4"
-                                Padding="4"
-                                Visibility="Collapsed">
-                            <TextBlock x:Name="MousePositionText"
-                                       Foreground="White"
-                                       FontSize="12"
-                                       FontWeight="SemiBold" />
-                        </Border>
-                    </Canvas>
+                    <Grid x:Name="PanContent"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          RenderTransformOrigin="0.5,0.5">
+                        <Image x:Name="ReferenceImage"
+                               Source="{Binding ReferenceImage}"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               SizeChanged="OnReferenceImageSizeChanged" />
+                        <Canvas x:Name="DrawingCanvas"
+                                Background="Transparent"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ClipToBounds="True"
+                                MouseLeftButtonDown="OnCanvasLeftButtonDown"
+                                MouseRightButtonDown="OnCanvasRightButtonDown"
+                                MouseRightButtonUp="OnCanvasRightButtonUp"
+                                MouseMove="OnCanvasMouseMove"
+                                MouseLeave="OnCanvasMouseLeave"
+                                MouseLeftButtonUp="OnCanvasLeftButtonUp" />
+                        <Canvas x:Name="OverlayCanvas"
+                                Panel.ZIndex="1"
+                                Width="{Binding ElementName=PanContent, Path=ActualWidth}"
+                                Height="{Binding ElementName=PanContent, Path=ActualHeight}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+                            <Border x:Name="MousePositionPopup"
+                                    Background="#CC000000"
+                                    CornerRadius="4"
+                                    Padding="4"
+                                    Visibility="Collapsed">
+                                <TextBlock x:Name="MousePositionText"
+                                           Foreground="White"
+                                           FontSize="12"
+                                           FontWeight="SemiBold" />
+                            </Border>
+                        </Canvas>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>
