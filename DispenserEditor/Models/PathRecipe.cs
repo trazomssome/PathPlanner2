@@ -6,7 +6,7 @@ namespace DispenserEditor.Models
 {
     public class PathRecipe : ObservableObject
     {
-        private int _schemaVersion = 2;
+        private int _schemaVersion = 3;
         private string _name = "Path Recipe";
         private PathRecipeItem _selectedItem;
 
