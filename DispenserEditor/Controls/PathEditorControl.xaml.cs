@@ -60,7 +60,7 @@ namespace DispenserEditor.Controls
             InitializeComponent();
             _viewModel = new PathEditorViewModel();
             DataContext = _viewModel;
-            CanvasContainer.RenderTransform = _panTransform;
+            PanContent.RenderTransform = _panTransform;
             ApplyPanOffset();
 
             Loaded += OnLoaded;
