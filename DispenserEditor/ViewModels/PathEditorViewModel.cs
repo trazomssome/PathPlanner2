@@ -11,46 +11,25 @@ using DispenserEditor.Infrastructure;
 using DispenserEditor.Models;
 using Microsoft.Win32;
 using Newtonsoft.Json;
+using PathSegment = DispenserEditor.Models.PathSegment;
 
 namespace DispenserEditor.ViewModels
 {
-    public enum DrawingMode
-    {
-        Move,
-        Point,
-        Line
-    }
-
-    public enum CrosshairMoveMode
-    {
-        KeepPointsFixed,
-        MovePointsWithCrosshair
-    }
-
     public class PathEditorViewModel : ObservableObject
     {
         private readonly Stack<string> _undoStack = new Stack<string>();
         private readonly Stack<string> _redoStack = new Stack<string>();
         private PathRecipe _recipe;
-        private PathRecipeItem _selectedItem = null;
-        private PathFeature _selectedFeature = null;
-        private PathPoint _selectedPoint = null;
-        private FeatureListEntry _selectedEntry = null;
-        private bool _synchronizingSelection;
-        private bool _isUpdatingFeatureEntries;
-        private DrawingMode _currentMode = DrawingMode.Move;
-        private ImageSource _referenceImage = null;
+        private PathRecipeItem _selectedItem;
+        private PathSegment _selectedSegment;
+        private ImageSource _referenceImage;
         private double _imageWidth = 800;
         private double _imageHeight = 600;
         private string _statusMessage = string.Empty;
-        private double _appliedCenterX;
-        private double _appliedCenterY;
-        private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
-        private bool _showLinePoints = true;
+        private bool _isRestoring;
 
         public PathEditorViewModel()
         {
-            FeatureEntries = new ObservableCollection<FeatureListEntry>();
             LoadRecipe(new PathRecipe(), initializeHistory: true);
         }
 
@@ -64,46 +43,72 @@ namespace DispenserEditor.ViewModels
                     _recipe = value;
                     RaisePropertyChanged();
                     RaisePropertyChanged(nameof(Items));
-                    RaisePropertyChanged(nameof(Features));
+                    RaisePropertyChanged(nameof(Segments));
                 }
             }
         }
 
         public ObservableCollection<PathRecipeItem> Items => Recipe?.Items;
 
+        public ObservableCollection<PathSegment> Segments => SelectedItem?.Segments;
+
         public PathRecipeItem SelectedItem
         {
             get => _selectedItem;
             set
             {
-                if (ReferenceEquals(_selectedItem, value))
+                if (SetProperty(ref _selectedItem, value))
                 {
-                    return;
+                    if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
+                    {
+                        Recipe.SelectedItem = value;
+                    }
+
+                    RaisePropertyChanged(nameof(Segments));
+                    RaisePropertyChanged(nameof(AppliedCenterX));
+                    RaisePropertyChanged(nameof(AppliedCenterY));
+                    SelectedSegment = value?.Segments.FirstOrDefault();
                 }
-
-                _selectedItem = value;
-
-                _appliedCenterX = _selectedItem?.CenterX ?? 0;
-                _appliedCenterY = _selectedItem?.CenterY ?? 0;
-
-                if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
-                {
-                    Recipe.SelectedItem = value;
-                }
-
-                RaisePropertyChanged(nameof(SelectedItem));
-                RaisePropertyChanged(nameof(Features));
-                RaisePropertyChanged(nameof(AppliedCenterX));
-                RaisePropertyChanged(nameof(AppliedCenterY));
-
-                UpdateFeatureEntries();
-                SelectedFeature = SelectedItem?.Features.FirstOrDefault();
             }
         }
 
-        public ObservableCollection<PathFeature> Features => SelectedItem?.Features;
+        public PathSegment SelectedSegment
+        {
+            get => _selectedSegment;
+            set => SetProperty(ref _selectedSegment, value);
+        }
 
-        public ObservableCollection<FeatureListEntry> FeatureEntries { get; }
+        public ImageSource ReferenceImage
+        {
+            get => _referenceImage;
+            private set => SetProperty(ref _referenceImage, value);
+        }
+
+        public double ImageWidth
+        {
+            get => _imageWidth;
+            private set => SetProperty(ref _imageWidth, value);
+        }
+
+        public double ImageHeight
+        {
+            get => _imageHeight;
+            private set => SetProperty(ref _imageHeight, value);
+        }
+
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        public double AppliedCenterX => SelectedItem?.CenterX ?? 0.0;
+
+        public double AppliedCenterY => SelectedItem?.CenterY ?? 0.0;
+
+        public bool CanUndo => _undoStack.Count > 1;
+
+        public bool CanRedo => _redoStack.Count > 0;
 
         public void LoadRecipe(PathRecipe recipe)
         {
@@ -121,9 +126,10 @@ namespace DispenserEditor.ViewModels
             var item = new PathRecipeItem
             {
                 Name = itemName,
-                CenterX = _appliedCenterX,
-                CenterY = _appliedCenterY
+                CenterX = SelectedItem?.CenterX ?? 0.0,
+                CenterY = SelectedItem?.CenterY ?? 0.0
             };
+
             Recipe.Items.Add(item);
             SelectedItem = item;
             SaveSnapshot();
@@ -152,150 +158,85 @@ namespace DispenserEditor.ViewModels
             var removedName = SelectedItem.Name;
             Recipe.Items.RemoveAt(index);
             var nextIndex = Math.Min(index, Recipe.Items.Count - 1);
-            SelectedItem = Recipe.Items[nextIndex];
+            SelectedItem = Recipe.Items.Count > 0 ? Recipe.Items[nextIndex] : null;
             SaveSnapshot();
             StatusMessage = $"Removed {removedName}.";
         }
 
-        private void EnsureDefaultItem()
+        public void AddSegment(PathSegmentType segmentType)
         {
-            if (Recipe == null)
+            if (Segments == null)
             {
                 return;
             }
 
-            if (Recipe.Items.Count == 0)
+            var segment = new PathSegment
             {
-                var item = new PathRecipeItem { Name = $"Recipe Item {Recipe.Items.Count + 1}" };
-                Recipe.Items.Add(item);
-            }
+                SegmentType = segmentType,
+                X = SelectedItem?.CenterX ?? 0.0,
+                Y = SelectedItem?.CenterY ?? 0.0
+            };
 
-            if (Recipe.SelectedItem == null)
-            {
-                Recipe.SelectedItem = Recipe.Items.FirstOrDefault();
-            }
+            Segments.Add(segment);
+            SelectedSegment = segment;
+            SaveSnapshot();
+            StatusMessage = $"Added {segmentType} segment.";
         }
 
-        private void LoadRecipe(PathRecipe recipe, bool initializeHistory)
+        public void RemoveSelectedSegment()
         {
-            if (recipe == null)
-            {
-                throw new ArgumentNullException(nameof(recipe));
-            }
-
-            if (ReferenceEquals(_recipe, recipe))
+            if (Segments == null || SelectedSegment == null)
             {
                 return;
             }
 
-            if (_recipe != null)
+            var index = Segments.IndexOf(SelectedSegment);
+            if (index < 0)
             {
-                DetachRecipe(_recipe);
+                return;
             }
 
-            Recipe = recipe;
-            AttachRecipe(Recipe);
-            EnsureDefaultItem();
-            SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
+            Segments.RemoveAt(index);
+            SelectedSegment = Segments.Count > 0 ? Segments[Math.Min(index, Segments.Count - 1)] : null;
+            SaveSnapshot();
+            StatusMessage = "Removed segment.";
+        }
 
-            if (initializeHistory)
+        public void ClearSegments()
+        {
+            if (Segments == null || Segments.Count == 0)
             {
-                _undoStack.Clear();
-                _redoStack.Clear();
-                SaveSnapshot();
+                return;
             }
+
+            Segments.Clear();
+            SelectedSegment = null;
+            SaveSnapshot();
+            StatusMessage = "Cleared segments.";
         }
 
-        public PathFeature SelectedFeature
+        public void ShiftAllSegments(double offsetX, double offsetY)
         {
-            get => _selectedFeature;
-            set
+            if (Segments == null)
             {
-                if (SetProperty(ref _selectedFeature, value))
-                {
-                    UpdateSelection(value);
-                    SynchronizeSelectedEntry(value);
-                }
+                return;
             }
-        }
 
-        public PathPoint SelectedPoint
-        {
-            get => _selectedPoint;
-            set => SetProperty(ref _selectedPoint, value);
-        }
-
-        public FeatureListEntry SelectedEntry
-        {
-            get => _selectedEntry;
-            set => UpdateSelectedEntry(value, true);
-        }
-
-        public DrawingMode CurrentMode
-        {
-            get => _currentMode;
-            set => SetProperty(ref _currentMode, value);
-        }
-
-        public ImageSource ReferenceImage
-        {
-            get => _referenceImage;
-            private set => SetProperty(ref _referenceImage, value);
-        }
-
-        public double AppliedCenterX => _appliedCenterX;
-
-        public double AppliedCenterY => _appliedCenterY;
-
-        public double ImageWidth
-        {
-            get => _imageWidth;
-            private set => SetProperty(ref _imageWidth, value);
-        }
-
-        public double ImageHeight
-        {
-            get => _imageHeight;
-            private set => SetProperty(ref _imageHeight, value);
-        }
-
-        public string StatusMessage
-        {
-            get => _statusMessage;
-            set => SetProperty(ref _statusMessage, value);
-        }
-
-        public bool ShowLinePoints
-        {
-            get => _showLinePoints;
-            set
+            if (Math.Abs(offsetX) < double.Epsilon && Math.Abs(offsetY) < double.Epsilon)
             {
-                if (SetProperty(ref _showLinePoints, value))
-                {
-                    StatusMessage = value ? "Line points visible." : "Line points hidden.";
-                }
+                return;
+            }
+
+            foreach (var segment in Segments)
+            {
+                segment.X += offsetX;
+                segment.Y += offsetY;
             }
         }
 
-        public CrosshairMoveMode CrosshairMode
+        public void RegisterSnapshot()
         {
-            get => _crosshairMode;
-            set => SetProperty(ref _crosshairMode, value);
-        }
-
-        public bool CanUndo => _undoStack.Count > 1;
-        public bool CanRedo => _redoStack.Count > 0;
-
-        public void SaveSnapshot()
-        {
-            var json = JsonConvert.SerializeObject(Recipe, Formatting.Indented);
-            if (_undoStack.Count == 0 || _undoStack.Peek() != json)
-            {
-                _undoStack.Push(json);
-            }
-            _redoStack.Clear();
-            RaisePropertyChanged(nameof(CanUndo));
-            RaisePropertyChanged(nameof(CanRedo));
+            SaveSnapshot();
         }
 
         public void Undo()
@@ -341,7 +282,7 @@ namespace DispenserEditor.ViewModels
                 var json = File.ReadAllText(dialog.FileName);
                 RestoreFromJson(json);
                 SaveSnapshot();
-                StatusMessage = $"Imported recipe from {Path.GetFileName(dialog.FileName)}";
+                StatusMessage = $"Imported recipe from {Path.GetFileName(dialog.FileName)}.";
             }
         }
 
@@ -357,7 +298,7 @@ namespace DispenserEditor.ViewModels
             {
                 var json = JsonConvert.SerializeObject(Recipe, Formatting.Indented);
                 File.WriteAllText(dialog.FileName, json);
-                StatusMessage = $"Exported recipe to {Path.GetFileName(dialog.FileName)}";
+                StatusMessage = $"Exported recipe to {Path.GetFileName(dialog.FileName)}.";
             }
         }
 
@@ -374,109 +315,67 @@ namespace DispenserEditor.ViewModels
                 ReferenceImage = image;
                 ImageWidth = image.PixelWidth;
                 ImageHeight = image.PixelHeight;
-                StatusMessage = $"Loaded {Path.GetFileName(dialog.FileName)}";
+                StatusMessage = $"Loaded {Path.GetFileName(dialog.FileName)}.";
             }
         }
 
-        public void RemoveSelectedFeature()
+        private void LoadRecipe(PathRecipe recipe, bool initializeHistory)
         {
-            if (Features == null || SelectedFeature == null)
+            if (recipe == null)
             {
-                return;
+                throw new ArgumentNullException(nameof(recipe));
             }
 
-            Features.Remove(SelectedFeature);
-            SaveSnapshot();
-            SelectedFeature = null;
-        }
-
-        public void EnsureFeatureNames()
-        {
-            if (Features == null)
+            if (_recipe != null)
             {
-                return;
+                DetachRecipe(_recipe);
             }
 
-            for (int i = 0; i < Features.Count; i++)
-            {
-                if (string.IsNullOrWhiteSpace(Features[i].Name))
-                {
-                    Features[i].Name = $"Feature {i + 1}";
-                }
-            }
-        }
+            Recipe = recipe;
+            AttachRecipe(Recipe);
+            EnsureDefaultItem();
+            SelectedItem = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
 
-        public void ShiftAllPoints(double offsetX, double offsetY)
-        {
-            if (Features == null)
+            if (initializeHistory)
             {
-                return;
-            }
-
-            if (Math.Abs(offsetX) < double.Epsilon && Math.Abs(offsetY) < double.Epsilon)
-            {
-                return;
-            }
-
-            foreach (var feature in Features)
-            {
-                foreach (var point in feature.Points)
-                {
-                    point.X += offsetX;
-                    point.Y += offsetY;
-                }
-            }
-        }
-
-        public void SetCenter(double x, double y, bool commit = true, bool updateStatus = true)
-        {
-            var deltaX = x - _appliedCenterX;
-            var deltaY = y - _appliedCenterY;
-            if (Math.Abs(deltaX) < double.Epsilon && Math.Abs(deltaY) < double.Epsilon)
-            {
-                return;
-            }
-
-            if (CrosshairMode == CrosshairMoveMode.KeepPointsFixed)
-            {
-                ShiftAllPoints(deltaX, deltaY);
-            }
-
-            if (SelectedItem == null)
-            {
-                return;
-            }
-
-            SelectedItem.CenterX = x;
-            SelectedItem.CenterY = y;
-            _appliedCenterX = SelectedItem.CenterX;
-            _appliedCenterY = SelectedItem.CenterY;
-            RaisePropertyChanged(nameof(AppliedCenterX));
-            RaisePropertyChanged(nameof(AppliedCenterY));
-            if (commit)
-            {
+                _undoStack.Clear();
+                _redoStack.Clear();
                 SaveSnapshot();
             }
-
-            if (updateStatus)
+            else
             {
-                StatusMessage = $"Center moved to ({x:F3}, {y:F3}).";
+                RaisePropertyChanged(nameof(CanUndo));
+                RaisePropertyChanged(nameof(CanRedo));
             }
         }
 
-        public void UpdateMode(DrawingMode mode)
+        private void EnsureDefaultItem()
         {
-            CurrentMode = mode;
-            StatusMessage = $"Mode switched to {mode}";
-        }
+            if (Recipe == null)
+            {
+                return;
+            }
 
-        public void RegisterSnapshot()
-        {
-            SaveSnapshot();
+            if (Recipe.Items.Count == 0)
+            {
+                var item = new PathRecipeItem { Name = $"Recipe Item {Recipe.Items.Count + 1}" };
+                Recipe.Items.Add(item);
+            }
+
+            if (Recipe.SelectedItem == null)
+            {
+                Recipe.SelectedItem = Recipe.Items.FirstOrDefault();
+            }
         }
 
         private void AttachRecipe(PathRecipe recipe)
         {
+            if (recipe == null)
+            {
+                return;
+            }
+
+            recipe.PropertyChanged += OnRecipePropertyChanged;
             recipe.Items.CollectionChanged += OnItemsCollectionChanged;
             foreach (var item in recipe.Items)
             {
@@ -486,6 +385,12 @@ namespace DispenserEditor.ViewModels
 
         private void DetachRecipe(PathRecipe recipe)
         {
+            if (recipe == null)
+            {
+                return;
+            }
+
+            recipe.PropertyChanged -= OnRecipePropertyChanged;
             recipe.Items.CollectionChanged -= OnItemsCollectionChanged;
             foreach (var item in recipe.Items)
             {
@@ -501,10 +406,10 @@ namespace DispenserEditor.ViewModels
             }
 
             item.PropertyChanged += OnItemPropertyChanged;
-            item.Features.CollectionChanged += OnFeaturesCollectionChanged;
-            foreach (var feature in item.Features)
+            item.Segments.CollectionChanged += OnSegmentsCollectionChanged;
+            foreach (var segment in item.Segments)
             {
-                AttachFeature(feature);
+                segment.PropertyChanged += OnSegmentPropertyChanged;
             }
         }
 
@@ -516,51 +421,10 @@ namespace DispenserEditor.ViewModels
             }
 
             item.PropertyChanged -= OnItemPropertyChanged;
-            item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
-            foreach (var feature in item.Features)
+            item.Segments.CollectionChanged -= OnSegmentsCollectionChanged;
+            foreach (var segment in item.Segments)
             {
-                DetachFeature(feature);
-            }
-        }
-
-        private void AttachFeature(PathFeature feature)
-        {
-            feature.PropertyChanged += OnFeaturePropertyChanged;
-            feature.Points.CollectionChanged += OnFeaturePointsChanged;
-            foreach (var point in feature.Points)
-            {
-                point.PropertyChanged += OnPointPropertyChanged;
-            }
-        }
-
-        private void DetachFeature(PathFeature feature)
-        {
-            feature.PropertyChanged -= OnFeaturePropertyChanged;
-            feature.Points.CollectionChanged -= OnFeaturePointsChanged;
-            foreach (var point in feature.Points)
-            {
-                point.PropertyChanged -= OnPointPropertyChanged;
-            }
-        }
-
-        private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (!ReferenceEquals(sender, SelectedItem))
-            {
-                return;
-            }
-
-            if (e.PropertyName == nameof(PathRecipeItem.CenterX) || e.PropertyName == nameof(PathRecipeItem.CenterY))
-            {
-                _appliedCenterX = SelectedItem.CenterX;
-                _appliedCenterY = SelectedItem.CenterY;
-                RaisePropertyChanged(nameof(AppliedCenterX));
-                RaisePropertyChanged(nameof(AppliedCenterY));
-            }
-            else if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity) ||
-                     e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
-            {
-                UpdateFeatureEntries();
+                segment.PropertyChanged -= OnSegmentPropertyChanged;
             }
         }
 
@@ -582,276 +446,115 @@ namespace DispenserEditor.ViewModels
                 }
             }
 
-            EnsureDefaultItem();
-            if (!Recipe.Items.Contains(SelectedItem))
-            {
-                var candidate = Recipe.SelectedItem;
-                if (candidate == null || !Recipe.Items.Contains(candidate))
-                {
-                    candidate = Recipe.Items.FirstOrDefault();
-                }
-
-                SelectedItem = candidate;
-            }
-
             RaisePropertyChanged(nameof(Items));
+            SaveSnapshot();
         }
 
-        private void OnFeaturesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void OnSegmentsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.OldItems != null)
             {
-                foreach (PathFeature feature in e.OldItems)
+                foreach (PathSegment segment in e.OldItems)
                 {
-                    DetachFeature(feature);
+                    segment.PropertyChanged -= OnSegmentPropertyChanged;
                 }
             }
 
             if (e.NewItems != null)
             {
-                foreach (PathFeature feature in e.NewItems)
+                foreach (PathSegment segment in e.NewItems)
                 {
-                    AttachFeature(feature);
+                    segment.PropertyChanged += OnSegmentPropertyChanged;
                 }
             }
 
-            if (ReferenceEquals(sender, SelectedItem?.Features))
+            RaisePropertyChanged(nameof(Segments));
+
+            if (Segments != null && !Segments.Contains(SelectedSegment))
             {
-                RaisePropertyChanged(nameof(Features));
-                UpdateFeatureEntries();
+                SelectedSegment = Segments.LastOrDefault();
+            }
+
+            SaveSnapshot();
+        }
+
+        private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PathRecipeItem.CenterX))
+            {
+                RaisePropertyChanged(nameof(AppliedCenterX));
+            }
+            else if (e.PropertyName == nameof(PathRecipeItem.CenterY))
+            {
+                RaisePropertyChanged(nameof(AppliedCenterY));
+            }
+
+            if (!_isRestoring)
+            {
+                SaveSnapshot();
             }
         }
 
-        private void OnFeaturePropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnSegmentPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            UpdateFeatureEntries();
+            if (_isRestoring)
+            {
+                return;
+            }
+
+            SaveSnapshot();
         }
 
-        private void OnFeaturePointsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void OnRecipePropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.OldItems != null)
+            if (e.PropertyName == nameof(PathRecipe.SelectedItem))
             {
-                foreach (PathPoint point in e.OldItems)
+                if (!ReferenceEquals(SelectedItem, Recipe.SelectedItem))
                 {
-                    point.PropertyChanged -= OnPointPropertyChanged;
+                    SelectedItem = Recipe.SelectedItem;
                 }
             }
-
-            if (e.NewItems != null)
-            {
-                foreach (PathPoint point in e.NewItems)
-                {
-                    point.PropertyChanged += OnPointPropertyChanged;
-                }
-            }
-
-            UpdateFeatureEntries();
         }
 
-        private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void SaveSnapshot()
         {
-            UpdateFeatureEntries();
+            if (_isRestoring || Recipe == null)
+            {
+                return;
+            }
+
+            var json = JsonConvert.SerializeObject(Recipe, Formatting.Indented);
+            if (_undoStack.Count == 0 || _undoStack.Peek() != json)
+            {
+                _undoStack.Push(json);
+            }
+
+            _redoStack.Clear();
+            RaisePropertyChanged(nameof(CanUndo));
+            RaisePropertyChanged(nameof(CanRedo));
         }
 
         private void RestoreFromJson(string json)
         {
-            var restored = JsonConvert.DeserializeObject<PathRecipe>(json);
-            if (restored == null)
+            if (string.IsNullOrWhiteSpace(json))
             {
                 return;
             }
 
-            var previousSelection = Recipe.SelectedItem;
-            var previousIndex = previousSelection != null ? Recipe.Items.IndexOf(previousSelection) : -1;
-
-            DetachRecipe(Recipe);
-
-            Recipe.Name = restored.Name;
-            Recipe.SchemaVersion = restored.SchemaVersion;
-
-            Recipe.SelectedItem = null;
-
-            Recipe.Items.Clear();
-            foreach (var item in restored.Items)
-            {
-                Recipe.Items.Add(item);
-            }
-
-            AttachRecipe(Recipe);
-            EnsureDefaultItem();
-
-            PathRecipeItem targetSelection = null;
-            if (previousSelection != null)
-            {
-                if (previousIndex >= 0 && previousIndex < Recipe.Items.Count)
-                {
-                    targetSelection = Recipe.Items[previousIndex];
-                }
-
-                if (targetSelection == null)
-                {
-                    targetSelection = Recipe.Items.FirstOrDefault(item => string.Equals(item.Name, previousSelection.Name, StringComparison.Ordinal));
-                }
-            }
-
-            if (targetSelection == null)
-            {
-                targetSelection = Recipe.SelectedItem ?? Recipe.Items.FirstOrDefault();
-            }
-
-            if (_selectedItem != null)
-            {
-                SelectedItem = null;
-            }
-
-            SelectedItem = targetSelection ?? Recipe.Items.FirstOrDefault();
-
-            if (SelectedItem != null)
-            {
-                _appliedCenterX = SelectedItem.CenterX;
-                _appliedCenterY = SelectedItem.CenterY;
-                RaisePropertyChanged(nameof(AppliedCenterX));
-                RaisePropertyChanged(nameof(AppliedCenterY));
-            }
-
-            SelectedFeature = SelectedItem?.Features.FirstOrDefault();
-            StatusMessage = "Recipe restored";
-            RaisePropertyChanged(nameof(Items));
-            RaisePropertyChanged(nameof(Features));
-            UpdateFeatureEntries();
-        }
-
-        private void UpdateSelection(PathFeature feature)
-        {
-            if (Features == null)
-            {
-                SelectedPoint = null;
-                return;
-            }
-
-            foreach (var f in Features)
-            {
-                f.IsSelected = f == feature;
-            }
-
-            if (feature != null)
-            {
-                SelectedPoint = feature.Points.FirstOrDefault();
-            }
-            else
-            {
-                SelectedPoint = null;
-            }
-        }
-
-        private void UpdateFeatureEntries()
-        {
-            if (_isUpdatingFeatureEntries)
-            {
-                return;
-            }
-
-            _isUpdatingFeatureEntries = true;
-
-            var previousEntry = _selectedEntry;
-
-            try
-            {
-                foreach (var entry in FeatureEntries)
-                {
-                    entry.Dispose();
-                }
-                FeatureEntries.Clear();
-
-                if (Features == null)
-                {
-                    UpdateSelectedEntry(null, false);
-                    return;
-                }
-
-                foreach (var feature in Features)
-                {
-                    if (feature.Type == PathFeatureType.Line)
-                    {
-                        for (int i = 0; i < feature.Points.Count; i++)
-                        {
-                            var point = feature.Points[i];
-                            FeatureEntries.Add(FeatureListEntry.ForLinePoint(feature, point, i));
-                        }
-                    }
-                    else
-                    {
-                        var point = feature.Points.FirstOrDefault();
-                        FeatureEntries.Add(FeatureListEntry.ForPoint(feature, point));
-                    }
-                }
-            
-                FeatureListEntry target = null;
-                if (previousEntry != null)
-                {
-                    target = FeatureEntries.FirstOrDefault(entry =>
-                        ReferenceEquals(entry.Feature, previousEntry.Feature) &&
-                        entry.SegmentIndex == previousEntry.SegmentIndex &&
-                        ReferenceEquals(entry.Point, previousEntry.Point));
-                }
-                if (target == null && SelectedFeature != null)
-                {
-                    target = FeatureEntries.FirstOrDefault(entry => ReferenceEquals(entry.Feature, SelectedFeature));
-                }
-
-                if (target == null && FeatureEntries.Count > 0)
-                {
-                    target = FeatureEntries.First();
-                }
-
-                UpdateSelectedEntry(target, false);
-            }
-            finally
-            {
-                _isUpdatingFeatureEntries = false;
-            }
-        }
-
-        private void UpdateSelectedEntry(FeatureListEntry entry, bool updateFeature)
-        {
-            if (ReferenceEquals(_selectedEntry, entry))
-            {
-                return;
-            }
-
-            _selectedEntry = entry;
-            RaisePropertyChanged(nameof(SelectedEntry));
-
-            if (updateFeature && !_synchronizingSelection)
-            {
-                try
-                {
-                    _synchronizingSelection = true;
-                    SelectedFeature = entry?.Feature;
-                }
-                finally
-                {
-                    _synchronizingSelection = false;
-                }
-            }
-        }
-
-        private void SynchronizeSelectedEntry(PathFeature feature)
-        {
-            if (_synchronizingSelection)
+            var recipe = JsonConvert.DeserializeObject<PathRecipe>(json);
+            if (recipe == null)
             {
                 return;
             }
 
             try
             {
-                _synchronizingSelection = true;
-                var entry = FeatureEntries.FirstOrDefault(item => ReferenceEquals(item.Feature, feature));
-                UpdateSelectedEntry(entry, false);
+                _isRestoring = true;
+                LoadRecipe(recipe, initializeHistory: false);
             }
             finally
             {
-                _synchronizingSelection = false;
+                _isRestoring = false;
             }
         }
     }

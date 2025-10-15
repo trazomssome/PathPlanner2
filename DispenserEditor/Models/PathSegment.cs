@@ -4,18 +4,44 @@ using Newtonsoft.Json;
 
 namespace DispenserEditor.Models
 {
-    public class PathPoint : ObservableObject
+    public enum PathSegmentType
     {
+        Point,
+        Line
+    }
+
+    public class PathSegment : ObservableObject
+    {
+        private PathSegmentType _segmentType = PathSegmentType.Point;
+        private bool _onDispensing = true;
+        private int _lineGroup;
         private double _x;
         private double _y;
         private double _speed = 100;
         private double _acceleration = 200;
         private double _deceleration = 200;
-        private bool _dispenseEnabled = true;
         private bool _autoSmoothing = true;
-        private bool _useCustomSpeed;
-        private bool _isSingle = true;
-        private int _lineGroup;
+
+        [JsonProperty("segmentType")]
+        public PathSegmentType SegmentType
+        {
+            get => _segmentType;
+            set => SetProperty(ref _segmentType, value);
+        }
+
+        [JsonProperty("onDispensing")]
+        public bool OnDispensing
+        {
+            get => _onDispensing;
+            set => SetProperty(ref _onDispensing, value);
+        }
+
+        [JsonProperty("lineGroup")]
+        public int LineGroup
+        {
+            get => _lineGroup;
+            set => SetProperty(ref _lineGroup, value);
+        }
 
         [JsonProperty("x")]
         public double X
@@ -52,39 +78,11 @@ namespace DispenserEditor.Models
             set => SetProperty(ref _deceleration, Math.Round(Clamp(value, 0.1, 5000), 3));
         }
 
-        [JsonProperty("dispense")]        
-        public bool DispenseEnabled
-        {
-            get => _dispenseEnabled;
-            set => SetProperty(ref _dispenseEnabled, value);
-        }
-
         [JsonProperty("autoSmoothing")]
         public bool AutoSmoothing
         {
             get => _autoSmoothing;
             set => SetProperty(ref _autoSmoothing, value);
-        }
-
-        [JsonProperty("useCustomSpeed")]
-        public bool UseCustomSpeed
-        {
-            get => _useCustomSpeed;
-            set => SetProperty(ref _useCustomSpeed, value);
-        }
-
-        [JsonProperty("isSingle")]
-        public bool IsSingle
-        {
-            get => _isSingle;
-            set => SetProperty(ref _isSingle, value);
-        }
-
-        [JsonProperty("lineGroup")]
-        public int LineGroup
-        {
-            get => _lineGroup;
-            set => SetProperty(ref _lineGroup, value);
         }
 
         private static double Clamp(double value, double min, double max)
