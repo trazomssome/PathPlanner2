@@ -12,12 +12,11 @@ namespace DispenserEditor.Models
         private double _pixelsPerMillimetre = 1.0;
         private double _centerX;
         private double _centerY;
-        private int _schemaVersion = 2;
+        private int _schemaVersion = 3;
         private string _name = "Recipe Item";
 
         public PathRecipeItem()
         {
-            Features = new ObservableCollection<PathFeature>();
             Segments = new ObservableCollection<PathSegment>();
         }
 
@@ -69,9 +68,6 @@ namespace DispenserEditor.Models
             get => _schemaVersion;
             set => SetProperty(ref _schemaVersion, value);
         }
-
-        [JsonProperty("features")]
-        public ObservableCollection<PathFeature> Features { get; }
 
         [JsonProperty("segments")]
         public ObservableCollection<PathSegment> Segments { get; }

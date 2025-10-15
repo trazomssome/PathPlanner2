@@ -3,462 +3,107 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              xmlns:prpt="http://propertytools.org/wpf"
              xmlns:viewModels="clr-namespace:DispenserEditor.ViewModels"
              mc:Ignorable="d"
              MinHeight="600"
-             MinWidth="1024">
+             MinWidth="900">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="7*" />
-            <ColumnDefinition Width="3*" MinWidth="300" />
-        </Grid.ColumnDefinitions>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ToolBar x:Name="MainToolBar"
-                 Grid.ColumnSpan="2"
-                 Background="#e0e4e9"
+        <ToolBar Grid.Row="0"
                  Padding="6"
-                 BorderThickness="0"
-                 BorderBrush="#FF111820"
-                 Panel.ZIndex="1"
                  ToolBarTray.IsLocked="True">
-            <ToolBar.Resources>
-                <SolidColorBrush x:Key="ToolbarButtonBackground" Color="#e0e4e9" />
-                <SolidColorBrush x:Key="ToolbarButtonHoverBackground" Color="#CBFFF3" />
-                <SolidColorBrush x:Key="ToolbarButtonPressedBackground" Color="#AEDA97" />
-                <SolidColorBrush x:Key="ToolbarButtonBorder" Color="#FF3E4B59" />
-
-                <Style TargetType="Button" BasedOn="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                    <Setter Property="Margin" Value="4,0" />
-                    <Setter Property="Padding" Value="10,6" />
-                    <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Foreground" Value="Black" />
-                    <Setter Property="Cursor" Value="Hand" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="4">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      RecognizesAccessKey="True" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource ToolbarButtonHoverBackground}" />
-                                    </Trigger>
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource ToolbarButtonPressedBackground}" />
-                                    </Trigger>
-                                    <Trigger Property="IsEnabled" Value="False">
-                                        <Setter Property="Opacity" Value="0.5" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-
-                <Style TargetType="ToggleButton" BasedOn="{StaticResource {x:Static ToolBar.ToggleButtonStyleKey}}">
-                    <Setter Property="Margin" Value="4,0" />
-                    <Setter Property="Padding" Value="10,6" />
-                    <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
-                    <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Foreground" Value="Black" />
-                    <Setter Property="Cursor" Value="Hand" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="ToggleButton">
-                                <Border x:Name="Border"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="4">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      RecognizesAccessKey="True" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Border" Property="Background" Value="{StaticResource ToolbarButtonHoverBackground}" />
-                                    </Trigger>
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="Border" Property="Background" Value="{StaticResource ToolbarButtonPressedBackground}" />
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="Border" Property="Background" Value="#FF1B5E9E" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </Trigger>
-                                    <Trigger Property="IsEnabled" Value="False">
-                                        <Setter Property="Opacity" Value="0.5" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-
-                <Style TargetType="Separator">
-                    <Setter Property="Margin" Value="8,0" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Separator">
-                                <Border Width="1"
-                                        Margin="4,2"
-                                        Background="#FF2C3A46" />
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-
-                <Style TargetType="TextBlock">
-                    <Setter Property="Foreground" Value="Black" />
-                    <Setter Property="VerticalAlignment" Value="Center" />
-                    <Setter Property="Margin" Value="8,0,4,0" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </Style>
-
-                <Style TargetType="fa:IconBlock">
-                    <Setter Property="Foreground" Value="Black" />
-                    <Setter Property="Width" Value="16" />
-                    <Setter Property="Height" Value="16" />
-                    <Setter Property="VerticalAlignment" Value="Center" />
-                </Style>
-
-                <Style TargetType="TextBox">
-                    <Setter Property="Margin" Value="4,0" />
-                    <Setter Property="VerticalAlignment" Value="Center" />
-                    <Setter Property="MinWidth" Value="60" />
-                </Style>
-
-                <Style TargetType="Slider">
-                    <Setter Property="Margin" Value="4,0" />
-                    <Setter Property="VerticalAlignment" Value="Center" />
-                    <Setter Property="Width" Value="140" />
-                </Style>
-            </ToolBar.Resources>
-
-            <Button Click="OnLoadImage">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="Image" Margin="0,0,6,0" />
-                    <TextBlock Text="Load Image" Margin="0" />
-                </StackPanel>
-            </Button>
-
+            <Button Content="Load Image" Click="OnLoadImage" Margin="4,0" />
             <Separator />
-
-            <ToggleButton Tag="Move" IsChecked="True" Checked="OnModeChanged">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="ArrowsUpDownLeftRight" Margin="0,0,6,0" />
-                    <TextBlock Text="Move" Margin="0" />
-                </StackPanel>
-            </ToggleButton>
-            <ToggleButton Tag="Line" Checked="OnModeChanged">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="Pen" Margin="0,0,6,0" />
-                    <TextBlock Text="Line" Margin="0" />
-                </StackPanel>
-            </ToggleButton>
-            <ToggleButton Tag="Point" Checked="OnModeChanged">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="LocationCrosshairs" Margin="0,0,6,0" />
-                    <TextBlock Text="Point" Margin="0" />
-                </StackPanel>
-            </ToggleButton>
-
-            <ToggleButton IsChecked="{Binding ShowLinePoints, Mode=TwoWay}" Margin="16,0,0,0">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="Eye" Margin="0,0,6,0" />
-                    <TextBlock Text="Show Line Points" Margin="0" />
-                </StackPanel>
-            </ToggleButton>
-
+            <Button Content="Import" Click="OnImport" Margin="4,0" />
+            <Button Content="Export" Click="OnExport" Margin="4,0" />
             <Separator />
-
-            <Button Click="OnUndo">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="ArrowRotateLeft" Margin="0,0,6,0" />
-                    <TextBlock Text="Undo" Margin="0" />
-                </StackPanel>
-            </Button>
-            <Button Click="OnRedo">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="ArrowRotateRight" Margin="0,0,6,0" />
-                    <TextBlock Text="Redo" Margin="0" />
-                </StackPanel>
-            </Button>
-
-            <Separator />
-
-            <Button Click="OnImport">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="FileImport" Margin="0,0,6,0" />
-                    <TextBlock Text="Import" Margin="0" />
-                </StackPanel>
-            </Button>
-            <Button Click="OnExport">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="FileExport" Margin="0,0,6,0" />
-                    <TextBlock Text="Export" Margin="0" />
-                </StackPanel>
-            </Button>
-
-            <Separator />
-
-            
-            <TextBlock Text="Opacity:" />
-            <Slider Minimum="0" Maximum="1" Value="{Binding SelectedItem.OverlayOpacity, Mode=TwoWay}" />
-            <Button Click="OnResetZoom" Margin="8,0,0,0">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="MagnifyingGlassMinus" Margin="0,0,6,0" />
-                    <TextBlock Text="Reset Zoom" Margin="0" />
-                </StackPanel>
-            </Button>
+            <Button Content="Undo" Click="OnUndo" Margin="4,0" IsEnabled="{Binding CanUndo}" />
+            <Button Content="Redo" Click="OnRedo" Margin="4,0" IsEnabled="{Binding CanRedo}" />
         </ToolBar>
 
-        <Grid Grid.Row="1" Grid.Column="0" Margin="8">
-            <Border x:Name="CanvasHost" BorderBrush="Gray" BorderThickness="1" Background="Black" SizeChanged="OnCanvasHostSizeChanged" ClipToBounds="True">
-                <Grid x:Name="CanvasContainer" MouseWheel="OnCanvasMouseWheel" ClipToBounds="True">
-                    <Image x:Name="ReferenceImage"
-                           Source="{Binding ReferenceImage}"
-                           Stretch="Uniform"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           SizeChanged="OnReferenceImageSizeChanged" />
-                    <Canvas x:Name="DrawingCanvas"
-                            Background="Transparent"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            ClipToBounds="True"
-                            MouseLeftButtonDown="OnCanvasLeftButtonDown"
-                            MouseRightButtonDown="OnCanvasRightButtonDown"
-                            MouseRightButtonUp="OnCanvasRightButtonUp"
-                            MouseMove="OnCanvasMouseMove"
-                            MouseLeave="OnCanvasMouseLeave"
-                            MouseLeftButtonUp="OnCanvasLeftButtonUp" />
-                    <Canvas x:Name="OverlayCanvas"
-                            Panel.ZIndex="1"
-                            Width="{Binding ElementName=DrawingCanvas, Path=ActualWidth}"
-                            Height="{Binding ElementName=DrawingCanvas, Path=ActualHeight}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            IsHitTestVisible="False">
-                        <Border x:Name="MousePositionPopup"
-                                Background="#CC000000"
-                                CornerRadius="4"
-                                Padding="4"
-                                Visibility="Collapsed">
-                            <TextBlock x:Name="MousePositionText"
-                                       Foreground="White"
-                                       FontSize="12"
-                                       FontWeight="SemiBold" />
-                        </Border>
-                    </Canvas>
-                </Grid>
-            </Border>
-        </Grid>
+        <Grid Grid.Row="1" Margin="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" MinWidth="280" />
+                <ColumnDefinition Width="3*" MinWidth="360" />
+            </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="1" Grid.Column="1" Margin="8" DataContext="{Binding}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <GroupBox Header="Recipe Items" Margin="0,0,0,8">
-                <Grid Margin="10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="100" />
-                        <ColumnDefinition />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Text="Current Item" VerticalAlignment="Center" />
-                    <ComboBox Grid.Column="1"
-                              ItemsSource="{Binding Items}"
-                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                              DisplayMemberPath="Name"
-                              Margin="8,0" />
-                    <Button Grid.Column="2" Content="Add" Width="60" Margin="8,0,0,0" Click="OnAddItem" />
-                    <Button Grid.Column="3" Content="Remove" Width="80" Margin="4,0,0,0" Click="OnRemoveItem" />
-
-                    <TextBlock Grid.Row="1" Text="Item Name" VerticalAlignment="Center" Margin="0,8,0,0" />
-                    <TextBox Grid.Row="1"
-                             Grid.Column="1"
-                             Margin="8,8,0,0"
-                             Text="{Binding SelectedItem.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                </Grid>
-            </GroupBox>
-
-            <GroupBox Header="Recipe Information" Grid.Row="1" Margin="0,0,0,8">
-                <Grid Margin="10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition Width="10"/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition/>
-                        <RowDefinition Height="2"/>
-                        <RowDefinition/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="Default Speed" 
-                                   VerticalAlignment="Center" 
-                                   Grid.Column="0"
-                                   Grid.Row="0"/>
-                    <TextBox Text="{Binding SelectedItem.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                   Grid.Column="1"
-                                   Grid.Row="0"/>
-                    <TextBlock Text="Pixels/mm:" 
-                                   Grid.Column="3"
-                                   Grid.Row="0"/>
-                    <TextBox VerticalAlignment="Center" Text="{Binding SelectedItem.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                   Grid.Column="4"
-                                   Grid.Row="0"/>
-
-                    <TextBlock Text="Center X" VerticalAlignment="Center"  
-                                   Grid.Column="0"
-                                   Grid.Row="2"/>
-                    <TextBox Text="{Binding SelectedItem.CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Column="1"
-                                 Grid.Row="2"/>
-                    <TextBlock Text="Center Y"  VerticalAlignment="Center" 
-                                 Grid.Column="3"
-                                 Grid.Row="2"/>
-                    <TextBox Text="{Binding SelectedItem.CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Grid.Column="4"
-                                 Grid.Row="2"/>
-                    <Button Content="Apply Center" Click="OnApplyCenter"
-                                 Grid.Column="6"
-                                 Grid.Row="2"/>
-
-                    <TextBlock Text="Crosshair Mode"
-                                   Grid.Column="0"
-                                   Grid.Row="3"
-                                   VerticalAlignment="Center"
-                                   Margin="0,6,0,0"/>
-                    <ComboBox Grid.Column="1"
-                              Grid.Row="3"
-                              Grid.ColumnSpan="6"
-                              Margin="0,6,0,0"
-                              SelectedValue="{Binding CrosshairMode, Mode=TwoWay}"
-                              SelectedValuePath="Tag">
-                        <ComboBoxItem Tag="{x:Static viewModels:CrosshairMoveMode.KeepPointsFixed}">Points stay fixed</ComboBoxItem>
-                        <ComboBoxItem Tag="{x:Static viewModels:CrosshairMoveMode.MovePointsWithCrosshair}">Move points with crosshair</ComboBoxItem>
-                    </ComboBox>
-                </Grid>
-            </GroupBox>
-
-            <GroupBox Header="Features" Grid.Row="2">
+            <GroupBox Header="Recipe Items" Margin="0,0,8,0">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="7*" />
-                        <RowDefinition Height="1*" />
-                        <RowDefinition Height="3*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <DataGrid x:Name="FeatureGrid"
-                              ItemsSource="{Binding FeatureEntries}"
-                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="Add" Click="OnAddItem" Margin="0,0,8,0" />
+                        <Button Content="Remove" Click="OnRemoveItem" />
+                    </StackPanel>
+
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding Items}"
+                             SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                             DisplayMemberPath="Name" />
+
+                    <prpt:PropertyGrid Grid.Row="2"
+                                       Margin="0,8,0,0"
+                                       SelectedObject="{Binding SelectedItem}" />
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Column="1" Header="Segments">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="Add Point" Click="OnAddPointSegment" Margin="0,0,8,0" />
+                        <Button Content="Add Line" Click="OnAddLineSegment" Margin="0,0,8,0" />
+                        <Button Content="Remove" Click="OnRemoveSegment" Margin="0,0,8,0" />
+                        <Button Content="Clear" Click="OnClearSegments" />
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="1"
                               AutoGenerateColumns="False"
-                              HeadersVisibility="Column"
-                              Margin="8"
-                              MinHeight="200"
+                              ItemsSource="{Binding Segments}"
+                              SelectedItem="{Binding SelectedSegment, Mode=TwoWay}"
                               CanUserAddRows="False"
-                              CanUserDeleteRows="False"
-                              CellEditEnding="OnFeatureGridCellEditEnding">
+                              CanUserDeleteRows="False">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="2*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Type" Binding="{Binding TypeDescription}" Width="*" IsReadOnly="True" />
-                            <DataGridCheckBoxColumn Header="Single"
-                                                     Width="*"
-                                                     Binding="{Binding IsSingle, Mode=TwoWay}" />
-                            <DataGridTextColumn Header="Line Group"
-                                                Width="*"
-                                                Binding="{Binding LineGroup, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                            <DataGridTextColumn Header="X"
-                                                Width="*"
-                                                Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                            <DataGridTextColumn Header="Y"
-                                                Width="*"
-                                                Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridComboBoxColumn Header="Type"
+                                                     SelectedItemBinding="{Binding SegmentType, Mode=TwoWay}"
+                                                     ItemsSource="{x:Static viewModels:SegmentTypeCollection.All}" />
+                            <DataGridCheckBoxColumn Header="Dispense" Binding="{Binding OnDispensing, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="Group" Binding="{Binding LineGroup, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="X" Binding="{Binding X, Mode=TwoWay, StringFormat=F3}" />
+                            <DataGridTextColumn Header="Y" Binding="{Binding Y, Mode=TwoWay, StringFormat=F3}" />
+                            <DataGridTextColumn Header="Speed" Binding="{Binding Speed, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="Accel" Binding="{Binding Acceleration, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="Decel" Binding="{Binding Deceleration, Mode=TwoWay}" />
+                            <DataGridCheckBoxColumn Header="Auto Smooth" Binding="{Binding AutoSmoothing, Mode=TwoWay}" />
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8">
-                        <Button Content="Clear" Click="OnClearFeatures" Margin="4,0" />
-                        <Button Content="Delete" Click="OnDeleteFeature" Margin="4,0" />
-                    </StackPanel>
-
-                    <prpt:PropertyGrid Grid.Row="2" SelectedObject="{Binding SelectedFeature}" />
-
-
-
-                    <!--<Border Grid.Row="2" BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="8" Padding="8">
-                        <StackPanel>
-                            <TextBlock Text="Selected Feature" FontWeight="Bold" Margin="0,0,0,6" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="Name" Width="80" />
-                                <TextBox Text="{Binding SelectedFeature.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="Type" Width="80" />
-                                <TextBlock Text="{Binding SelectedFeature.Type}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <CheckBox Content="Use Custom Speed" IsChecked="{Binding SelectedFeature.UseCustomSpeed, Mode=TwoWay}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="Speed" Width="80" />
-                                <TextBox Text="{Binding SelectedFeature.Speed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="Acceleration" Width="80" />
-                                <TextBox Text="{Binding SelectedFeature.Acceleration, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock Text="Deceleration" Width="80" />
-                                <TextBox Text="{Binding SelectedFeature.Deceleration, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <CheckBox Content="Dispense" IsChecked="{Binding SelectedFeature.Dispense, Mode=TwoWay}" />
-                                <CheckBox Content="Auto Smoothing" Margin="12,0,0,0" IsChecked="{Binding SelectedFeature.AutoSmoothing, Mode=TwoWay}" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>-->
+                    <prpt:PropertyGrid Grid.Row="2"
+                                       Margin="0,8,0,0"
+                                       SelectedObject="{Binding SelectedSegment}" />
                 </Grid>
             </GroupBox>
-
-            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
         </Grid>
 
-        <StatusBar Grid.Row="2" Grid.ColumnSpan="2">
-            <StatusBarItem>
-                <TextBlock Text="Coordinates are in millimetres (3 decimal places)" />
-            </StatusBarItem>
-        </StatusBar>
+        <Border Grid.Row="2"
+                Background="#FFEFEFEF"
+                Padding="8">
+            <TextBlock Text="{Binding StatusMessage}" />
+        </Border>
     </Grid>
 </UserControl>

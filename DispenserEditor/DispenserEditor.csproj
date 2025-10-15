@@ -96,13 +96,11 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Models\PathFeature.cs" />
-    <Compile Include="Models\PathPoint.cs" />
     <Compile Include="Models\PathRecipe.cs" />
     <Compile Include="Models\PathRecipeItem.cs" />
     <Compile Include="Models\PathSegment.cs" />
-    <Compile Include="ViewModels\FeatureListEntry.cs" />
     <Compile Include="ViewModels\PathEditorViewModel.cs" />
+    <Compile Include="ViewModels\SegmentTypeCollection.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
