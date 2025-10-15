@@ -233,7 +233,8 @@
                 <Grid x:Name="CanvasContainer" MouseWheel="OnCanvasMouseWheel" ClipToBounds="True">
                     <Grid x:Name="PanContent"
                           HorizontalAlignment="Center"
-                          VerticalAlignment="Center">
+                          VerticalAlignment="Center"
+                          RenderTransformOrigin="0.5,0.5">
                         <Image x:Name="ReferenceImage"
                                Source="{Binding ReferenceImage}"
                                Stretch="Uniform"

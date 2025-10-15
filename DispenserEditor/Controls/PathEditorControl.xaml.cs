@@ -43,7 +43,9 @@ namespace DispenserEditor.Controls
         private Point _panStart;
         private Vector _panOffset = new Vector();
         private Vector _panStartOffset;
+        private readonly ScaleTransform _zoomTransform = new ScaleTransform(1.0, 1.0);
         private readonly TranslateTransform _panTransform = new TranslateTransform();
+        private readonly TransformGroup _panZoomTransform;
         private bool _suppressRendering;
         private bool _renderPending;
 
@@ -60,7 +62,11 @@ namespace DispenserEditor.Controls
             InitializeComponent();
             _viewModel = new PathEditorViewModel();
             DataContext = _viewModel;
-            PanContent.RenderTransform = _panTransform;
+
+            _panZoomTransform = new TransformGroup();
+            _panZoomTransform.Children.Add(_zoomTransform);
+            _panZoomTransform.Children.Add(_panTransform);
+            PanContent.RenderTransform = _panZoomTransform;
             ApplyPanOffset();
 
             Loaded += OnLoaded;
@@ -357,9 +363,14 @@ namespace DispenserEditor.Controls
                 _baseDisplayScale = calculatedBaseScale;
             }
 
-            var scale = GetDisplayScale();
-            var width = _viewModel.ImageWidth * scale;
-            var height = _viewModel.ImageHeight * scale;
+            var baseScale = _baseDisplayScale;
+            if (double.IsNaN(baseScale) || baseScale <= 0)
+            {
+                baseScale = 1.0;
+            }
+
+            var width = _viewModel.ImageWidth * baseScale;
+            var height = _viewModel.ImageHeight * baseScale;
 
             if ((width <= 0 || double.IsNaN(width)) && _viewModel.ImageWidth > 0)
             {
@@ -416,6 +427,15 @@ namespace DispenserEditor.Controls
                 DrawingCanvas.Height = double.NaN;
                 ReferenceImage.Height = double.NaN;
             }
+
+            var zoomScale = _zoomFactor;
+            if (double.IsNaN(zoomScale) || zoomScale <= 0)
+            {
+                zoomScale = 1.0;
+            }
+
+            _zoomTransform.ScaleX = zoomScale;
+            _zoomTransform.ScaleY = zoomScale;
 
             ApplyPanOffset();
             RenderFeatures();
