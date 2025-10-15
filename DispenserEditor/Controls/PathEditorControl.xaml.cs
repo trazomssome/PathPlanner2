@@ -676,7 +676,7 @@ namespace DispenserEditor.Controls
 
         private double GetDisplayScale()
         {
-            var scale = _baseDisplayScale * _zoomFactor;
+            var scale = _baseDisplayScale;
             if (double.IsNaN(scale) || scale <= 0)
             {
                 return 1.0;
