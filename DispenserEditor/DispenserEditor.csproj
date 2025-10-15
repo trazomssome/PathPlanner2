@@ -97,6 +97,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Models\PathFeature.cs" />
+    <Compile Include="Models\PathSegment.cs" />
     <Compile Include="Models\PathPoint.cs" />
     <Compile Include="Models\PathRecipe.cs" />
     <Compile Include="Models\PathRecipeItem.cs" />
