@@ -229,7 +229,7 @@ namespace DispenserEditor.Controls
             }
 
             if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity) ||
-                e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
+                e.PropertyName == nameof(PathRecipeItem.MillimetresPerPixel))
             {
                 RequestRenderFeatures();
                 return;
@@ -740,8 +740,9 @@ namespace DispenserEditor.Controls
 
         private double GetScale()
         {
-            var pixelsPerMillimetre = Math.Max(_viewModel.SelectedItem?.PixelsPerMillimetre ?? 1.0, 0.0001);
+            var millimetresPerPixel = Math.Max(_viewModel.SelectedItem?.MillimetresPerPixel ?? 1.0, 0.0001);
             var displayScale = GetDisplayScale();
+            var pixelsPerMillimetre = 1.0 / millimetresPerPixel;
             return Math.Max(pixelsPerMillimetre * displayScale, 0.0001);
         }
 

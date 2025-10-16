@@ -9,7 +9,7 @@ namespace DispenserEditor.Models
     {
         private double _defaultSpeed = 10.0;
         private double _overlayOpacity = 0.8;
-        private double _pixelsPerMillimetre = 1.0;
+        private double _millimetresPerPixel = 1.0;
         private double _centerX;
         private double _centerY;
         private int _schemaVersion = 1;
@@ -44,11 +44,17 @@ namespace DispenserEditor.Models
             set => SetProperty(ref _overlayOpacity, Clamp(value, 0.0, 1.0));
         }
 
-        [JsonProperty("pixelsPerMillimetre")]
-        public double PixelsPerMillimetre
+        [JsonProperty("millimetresPerPixel")]
+        public double MillimetresPerPixel
         {
-            get => _pixelsPerMillimetre;
-            set => SetProperty(ref _pixelsPerMillimetre, value <= 0 ? 1.0 : Math.Round(Clamp(value, 0.01, 100), 3));
+            get => _millimetresPerPixel;
+            set => SetProperty(ref _millimetresPerPixel, value <= 0 ? 1.0 : Math.Round(Clamp(value, 0.01, 100), 3));
+        }
+
+        [JsonProperty("pixelsPerMillimetre")]
+        private double LegacyPixelsPerMillimetre
+        {
+            set => MillimetresPerPixel = value > 0 ? 1.0 / value : 1.0;
         }
 
         [JsonProperty("centerX")]

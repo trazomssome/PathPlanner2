@@ -32,7 +32,7 @@
 ## English
 
 ### 1. Drawing Tool Behaviour
-- **Coordinate unit**: Values are stored in millimetres with precision up to three decimal places. A pixels-per-millimetre ratio can be configured to map the canvas to physical units.
+- **Coordinate unit**: Values are stored in millimetres with precision up to three decimal places. A millimetres-per-pixel ratio can be configured to map the canvas to physical units.
 - **Image & Z-order**: Points and lines are rendered above the reference image. Global opacity is controlled at the recipe level, and selected elements are highlighted with a distinct colour.
 - **Mode-based input**: Buttons switch between Move, Line, and Point modes. In Line mode, left-click adds vertices and right-click finishes the active polyline. In Point mode, each left-click creates an independent point element.
 - **Drag editing**: With Move mode active, vertices and standalone points can be dragged to new positions. Coordinates are allowed to extend beyond the image bounds.
@@ -42,7 +42,7 @@
 ### 2. Recipe Structure & Data Model
 - **Hierarchy**: An integration recipe aggregates multiple dispense recipes. The editor focuses on one dispense recipe at a time.
 - **Dispense recipe items**: Each item is either `Point` or `Line`, containing coordinates (X, Y), speed, acceleration, deceleration, dispense flag, auto-smoothing flag, and a toggle indicating whether a custom speed overrides the default.
-- **Global defaults**: The recipe defines a Default Speed, overlay opacity, and the pixels-per-millimetre ratio. When an item enables custom speed, its own speed value overrides the default.
+- **Global defaults**: The recipe defines a Default Speed, overlay opacity, and the millimetres-per-pixel ratio. When an item enables custom speed, its own speed value overrides the default.
 - **Constraints**: Speed and acceleration/deceleration values are validated against configurable bounds. Snap-to-grid and axis-alignment constraints are not provided.
 - **JSON serialisation**: Recipes are imported/exported as JSON via Newtonsoft Json.NET, including a `schemaVersion` field for compatibility.
 

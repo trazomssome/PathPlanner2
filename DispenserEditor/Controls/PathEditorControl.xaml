@@ -349,10 +349,10 @@
                     <TextBox Text="{Binding SelectedItem.DefaultSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                                    Grid.Column="1"
                                    Grid.Row="0"/>
-                    <TextBlock Text="Pixels/mm:" 
+                    <TextBlock Text="mm/pixel:"
                                    Grid.Column="3"
                                    Grid.Row="0"/>
-                    <TextBox VerticalAlignment="Center" Text="{Binding SelectedItem.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                    <TextBox VerticalAlignment="Center" Text="{Binding SelectedItem.MillimetresPerPixel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                    Grid.Column="4"
                                    Grid.Row="0"/>
 
