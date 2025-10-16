@@ -215,6 +215,50 @@ namespace DispenserEditor.ViewModels
             set => SetProperty(ref _selectedSegment, value);
         }
 
+        public void ClearSegments()
+        {
+            var segments = Segments;
+            if (segments == null || segments.Count == 0)
+            {
+                return;
+            }
+
+            var removedCount = segments.Count;
+            segments.Clear();
+            SelectedSegment = null;
+            StatusMessage = removedCount == 1
+                ? "Removed 1 segment."
+                : $"Removed {removedCount} segments.";
+            SaveSnapshot();
+        }
+
+        public void RemoveSelectedSegment()
+        {
+            var segments = Segments;
+            if (segments == null || SelectedSegment == null)
+            {
+                return;
+            }
+
+            var index = segments.IndexOf(SelectedSegment);
+            if (index < 0)
+            {
+                return;
+            }
+
+            segments.RemoveAt(index);
+
+            PathSegment nextSelection = null;
+            if (segments.Count > 0)
+            {
+                nextSelection = index < segments.Count ? segments[index] : segments.LastOrDefault();
+            }
+
+            SelectedSegment = nextSelection;
+            StatusMessage = $"Removed segment {index + 1}.";
+            SaveSnapshot();
+        }
+
         public DrawingMode CurrentMode
         {
             get => _currentMode;
