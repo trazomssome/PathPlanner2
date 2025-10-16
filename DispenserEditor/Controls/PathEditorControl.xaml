@@ -381,7 +381,8 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="7*" />
-                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="3*" />
                     </Grid.RowDefinitions>
 
@@ -413,12 +414,42 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8">
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="8,0,8,8">
+                        <Button Content="Remove" Click="OnRemoveSegment" Margin="4,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedEntry.Feature.Type}" Value="Line">
+                                            <Setter Property="IsEnabled" Value="True" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Clear" Click="OnClearSegments" Margin="4,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedFeature.Type}" Value="Line">
+                                            <Setter Property="IsEnabled" Value="True" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectedFeature.Points.Count, TargetNullValue=0}" Value="0">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8">
                         <Button Content="Clear" Click="OnClearFeatures" Margin="4,0" />
                         <Button Content="Delete" Click="OnDeleteFeature" Margin="4,0" />
                     </StackPanel>
 
-                    <prpt:PropertyGrid Grid.Row="2" SelectedObject="{Binding SelectedFeature}" />
+                    <prpt:PropertyGrid Grid.Row="3" SelectedObject="{Binding SelectedFeature}" />
 
 
 

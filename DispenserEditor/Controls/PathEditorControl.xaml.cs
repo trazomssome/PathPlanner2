@@ -1246,6 +1246,18 @@ namespace DispenserEditor.Controls
             RenderFeatures();
         }
 
+        private void OnRemoveSegment(object sender, RoutedEventArgs e)
+        {
+            _viewModel.RemoveSelectedSegment();
+            RenderFeatures();
+        }
+
+        private void OnClearSegments(object sender, RoutedEventArgs e)
+        {
+            _viewModel.ClearSelectedSegments();
+            RenderFeatures();
+        }
+
         private void OnAddItem(object sender, RoutedEventArgs e)
         {
             _viewModel.AddRecipeItem();

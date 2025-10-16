@@ -390,6 +390,70 @@ namespace DispenserEditor.ViewModels
             SelectedFeature = null;
         }
 
+        public void RemoveSelectedSegment()
+        {
+            var entry = SelectedEntry;
+            if (entry == null)
+            {
+                return;
+            }
+
+            var feature = entry.Feature;
+            if (feature == null || Features == null)
+            {
+                return;
+            }
+
+            if (feature.Type != PathFeatureType.Line)
+            {
+                RemoveSelectedFeature();
+                return;
+            }
+
+            var index = entry.SegmentIndex;
+            if (index < 0 || index >= feature.Points.Count)
+            {
+                return;
+            }
+
+            feature.Points.RemoveAt(index);
+
+            if (feature.Points.Count > 0)
+            {
+                var nextIndex = Math.Min(index, feature.Points.Count - 1);
+                SelectedPoint = feature.Points[nextIndex];
+                SelectedFeature = feature;
+            }
+            else
+            {
+                Features.Remove(feature);
+                SelectedFeature = Features.FirstOrDefault();
+            }
+
+            SaveSnapshot();
+            StatusMessage = $"{feature.Name} - removed segment {index + 1}.";
+        }
+
+        public void ClearSelectedSegments()
+        {
+            var feature = SelectedFeature;
+            if (feature == null || feature.Type != PathFeatureType.Line)
+            {
+                return;
+            }
+
+            if (feature.Points.Count == 0)
+            {
+                return;
+            }
+
+            feature.Points.Clear();
+            SelectedPoint = null;
+
+            SaveSnapshot();
+            StatusMessage = $"{feature.Name} - cleared all segments.";
+        }
+
         public void EnsureFeatureNames()
         {
             if (Features == null)
