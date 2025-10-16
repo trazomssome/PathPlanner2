@@ -351,7 +351,7 @@
                     <TextBlock Text="Pixels/mm:" 
                                    Grid.Column="3"
                                    Grid.Row="0"/>
-                    <TextBox VerticalAlignment="Center" Text="{Binding SelectedItem.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox VerticalAlignment="Center" Text="{Binding SelectedItem.PixelsPerMillimetre, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                    Grid.Column="4"
                                    Grid.Row="0"/>
 
