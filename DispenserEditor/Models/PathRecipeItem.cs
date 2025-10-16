@@ -14,6 +14,8 @@ namespace DispenserEditor.Models
         private double _centerY;
         private int _schemaVersion = 1;
         private string _name = "Recipe Item";
+        private bool _isXMirrored;
+        private bool _isYMirrored;
 
         public PathRecipeItem()
         {
@@ -75,6 +77,80 @@ namespace DispenserEditor.Models
 
         [JsonProperty("segments")]
         public ObservableCollection<PathSegment> Segments { get; }
+
+        [JsonProperty("isXMirrored")]
+        public bool IsXMirrored
+        {
+            get => _isXMirrored;
+            set => SetProperty(ref _isXMirrored, value);
+        }
+
+        [JsonProperty("isYMirrored")]
+        public bool IsYMirrored
+        {
+            get => _isYMirrored;
+            set => SetProperty(ref _isYMirrored, value);
+        }
+
+        public void FlipXCoordinates()
+        {
+            var axis = CenterX;
+
+            foreach (var segment in Segments)
+            {
+                segment.X = Math.Round(2 * axis - segment.X, 3);
+            }
+
+            foreach (var feature in Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    point.X = Math.Round(2 * axis - point.X, 3);
+                }
+            }
+
+            IsXMirrored = !IsXMirrored;
+        }
+
+        public void FlipYCoordinates()
+        {
+            var axis = CenterY;
+
+            foreach (var segment in Segments)
+            {
+                segment.Y = Math.Round(2 * axis - segment.Y, 3);
+            }
+
+            foreach (var feature in Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    point.Y = Math.Round(2 * axis - point.Y, 3);
+                }
+            }
+
+            IsYMirrored = !IsYMirrored;
+        }
+
+        public double ToDisplayX(double storedX)
+        {
+            return IsXMirrored ? Math.Round(2 * CenterX - storedX, 3) : storedX;
+        }
+
+        public double ToDisplayY(double storedY)
+        {
+            return IsYMirrored ? Math.Round(2 * CenterY - storedY, 3) : storedY;
+        }
+
+        public double ToStoredX(double displayX)
+        {
+            return IsXMirrored ? Math.Round(2 * CenterX - displayX, 3) : Math.Round(displayX, 3);
+        }
+
+        public double ToStoredY(double displayY)
+        {
+            return IsYMirrored ? Math.Round(2 * CenterY - displayY, 3) : Math.Round(displayY, 3);
+        }
 
         private static double Clamp(double value, double min, double max)
         {

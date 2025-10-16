@@ -637,7 +637,9 @@ namespace DispenserEditor.Controls
 
         private Point ToCanvas(PathSegment segment)
         {
-            return ToCanvas(segment.X, segment.Y);
+            var displayX = _viewModel.ToDisplayX(segment.X);
+            var displayY = _viewModel.ToDisplayY(segment.Y);
+            return ToCanvas(displayX, displayY);
         }
 
         private Point ToCanvas(double x, double y)
@@ -942,11 +944,13 @@ namespace DispenserEditor.Controls
             }
 
             var modelPoint = ToModel(canvasPosition);
+            var storedX = _viewModel.ToStoredX(modelPoint.X);
+            var storedY = _viewModel.ToStoredY(modelPoint.Y);
             var segment = new PathSegment
             {
                 SegmentType = SegmentType.Point,
-                X = modelPoint.X,
-                Y = modelPoint.Y
+                X = storedX,
+                Y = storedY
             };
 
             _viewModel.Segments.Add(segment);
@@ -968,12 +972,14 @@ namespace DispenserEditor.Controls
                 _activeLineGroup = GetNextLineGroup();
             }
 
+            var storedX = _viewModel.ToStoredX(modelPoint.X);
+            var storedY = _viewModel.ToStoredY(modelPoint.Y);
             var segment = new PathSegment
             {
                 SegmentType = SegmentType.Line,
                 LineGroup = _activeLineGroup.Value,
-                X = modelPoint.X,
-                Y = modelPoint.Y
+                X = storedX,
+                Y = storedY
             };
 
             _viewModel.Segments.Add(segment);
@@ -1044,11 +1050,13 @@ namespace DispenserEditor.Controls
             if (_draggingSegment != null)
             {
                 var modelPoint = ToModel(position);
-                if (Math.Abs(_draggingSegment.X - modelPoint.X) > double.Epsilon ||
-                    Math.Abs(_draggingSegment.Y - modelPoint.Y) > double.Epsilon)
+                var storedX = _viewModel.ToStoredX(modelPoint.X);
+                var storedY = _viewModel.ToStoredY(modelPoint.Y);
+                if (Math.Abs(_draggingSegment.X - storedX) > double.Epsilon ||
+                    Math.Abs(_draggingSegment.Y - storedY) > double.Epsilon)
                 {
-                    _draggingSegment.X = modelPoint.X;
-                    _draggingSegment.Y = modelPoint.Y;
+                    _draggingSegment.X = storedX;
+                    _draggingSegment.Y = storedY;
                     _dragChanged = true;
                 }
                 return;
@@ -1247,6 +1255,22 @@ namespace DispenserEditor.Controls
 
             _viewModel.SetCenter(_viewModel.SelectedItem.CenterX, _viewModel.SelectedItem.CenterY);
             RenderFeatures();
+        }
+
+        private void OnFlipXCoordinates(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.FlipSelectedItemXCoordinates())
+            {
+                RenderFeatures();
+            }
+        }
+
+        private void OnFlipYCoordinates(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.FlipSelectedItemYCoordinates())
+            {
+                RenderFeatures();
+            }
         }
 
         private void ApplyPanOffset()

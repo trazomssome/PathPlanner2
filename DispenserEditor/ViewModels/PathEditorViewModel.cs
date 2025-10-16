@@ -28,6 +28,12 @@ namespace DispenserEditor.ViewModels
         MovePointsWithCrosshair
     }
 
+    public enum CoordinateAxis
+    {
+        X,
+        Y
+    }
+
     public class PathEditorViewModel : ObservableObject
     {
         private readonly Stack<string> _undoStack = new Stack<string>();
@@ -404,6 +410,62 @@ namespace DispenserEditor.ViewModels
                 ImageHeight = image.PixelHeight;
                 StatusMessage = $"Loaded {Path.GetFileName(dialog.FileName)}";
             }
+        }
+
+        public bool FlipSelectedItemXCoordinates()
+        {
+            return FlipSelectedItemCoordinates(CoordinateAxis.X);
+        }
+
+        public bool FlipSelectedItemYCoordinates()
+        {
+            return FlipSelectedItemCoordinates(CoordinateAxis.Y);
+        }
+
+        public double ToDisplayX(double storedX)
+        {
+            return SelectedItem?.ToDisplayX(storedX) ?? Math.Round(storedX, 3);
+        }
+
+        public double ToDisplayY(double storedY)
+        {
+            return SelectedItem?.ToDisplayY(storedY) ?? Math.Round(storedY, 3);
+        }
+
+        public double ToStoredX(double displayX)
+        {
+            return SelectedItem?.ToStoredX(displayX) ?? Math.Round(displayX, 3);
+        }
+
+        public double ToStoredY(double displayY)
+        {
+            return SelectedItem?.ToStoredY(displayY) ?? Math.Round(displayY, 3);
+        }
+
+        private bool FlipSelectedItemCoordinates(CoordinateAxis axis)
+        {
+            if (SelectedItem == null)
+            {
+                StatusMessage = "No recipe item selected.";
+                return false;
+            }
+
+            switch (axis)
+            {
+                case CoordinateAxis.X:
+                    SelectedItem.FlipXCoordinates();
+                    StatusMessage = "Mirrored X coordinates.";
+                    break;
+                case CoordinateAxis.Y:
+                    SelectedItem.FlipYCoordinates();
+                    StatusMessage = "Mirrored Y coordinates.";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(axis), axis, null);
+            }
+
+            SaveSnapshot();
+            return true;
         }
 
         public void ShiftAllPoints(double offsetX, double offsetY)
