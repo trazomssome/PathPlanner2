@@ -19,7 +19,8 @@ namespace DispenserEditor.ViewModels
     {
         Move,
         Point,
-        Line
+        Line,
+        Segment
     }
 
     public enum CrosshairMoveMode
@@ -431,22 +432,29 @@ namespace DispenserEditor.ViewModels
 
         public void ShiftAllPoints(double offsetX, double offsetY)
         {
-            if (Features == null)
-            {
-                return;
-            }
-
             if (Math.Abs(offsetX) < double.Epsilon && Math.Abs(offsetY) < double.Epsilon)
             {
                 return;
             }
 
-            foreach (var feature in Features)
+            if (Features != null)
             {
-                foreach (var point in feature.Points)
+                foreach (var feature in Features)
                 {
-                    point.X += offsetX;
-                    point.Y += offsetY;
+                    foreach (var point in feature.Points)
+                    {
+                        point.X += offsetX;
+                        point.Y += offsetY;
+                    }
+                }
+            }
+
+            if (Segments != null)
+            {
+                foreach (var segment in Segments)
+                {
+                    segment.X += offsetX;
+                    segment.Y += offsetY;
                 }
             }
         }

@@ -29,6 +29,7 @@ namespace DispenserEditor.Controls
         private PathRecipe _currentRecipe;
         private PathFeature _activeLineFeature = null;
         private PathPoint _draggingPoint = null;
+        private PathSegment _draggingSegment = null;
         private bool _isDragging;
         private bool _dragChanged;
         private bool _isDraggingCrosshair;
@@ -1043,6 +1044,7 @@ namespace DispenserEditor.Controls
             }
 
             _draggingPoint = null;
+            _draggingSegment = null;
             _isDragging = true;
             _dragChanged = false;
             DrawingCanvas.CaptureMouse();
@@ -1064,6 +1066,9 @@ namespace DispenserEditor.Controls
                     break;
                 case DrawingMode.Line:
                     AppendLinePoint(position);
+                    break;
+                case DrawingMode.Segment:
+                    CreateSegment(position);
                     break;
                 default:
                     BeginDrag(position);
@@ -1096,6 +1101,27 @@ namespace DispenserEditor.Controls
             _viewModel.SelectedPoint = feature.Points.First();
             _viewModel.SaveSnapshot();
             _viewModel.StatusMessage = $"Added {feature.Name}.";
+            RenderFeatures();
+        }
+
+        private void CreateSegment(Point canvasPosition)
+        {
+            if (_viewModel.Segments == null)
+            {
+                return;
+            }
+
+            var modelPoint = ToModel(canvasPosition);
+            var segment = new PathSegment
+            {
+                SegmentType = SegmentType.Point,
+                X = modelPoint.X,
+                Y = modelPoint.Y
+            };
+
+            _viewModel.Segments.Add(segment);
+            _viewModel.SelectedSegment = segment;
+            _viewModel.StatusMessage = $"Added segment {_viewModel.Segments.IndexOf(segment) + 1}.";
             RenderFeatures();
         }
 
@@ -1135,6 +1161,7 @@ namespace DispenserEditor.Controls
         {
             _activeLineFeature = null;
             _draggingPoint = null;
+            _draggingSegment = null;
             _isDraggingCrosshair = false;
             PathFeature feature;
             PathPoint point;
@@ -1143,6 +1170,14 @@ namespace DispenserEditor.Controls
                 _viewModel.SelectedFeature = feature;
                 _viewModel.SelectedPoint = point;
                 _draggingPoint = point;
+                _isDragging = true;
+                _dragChanged = false;
+                DrawingCanvas.CaptureMouse();
+            }
+            else if (TryFindSegment(canvasPosition, 12, out var segment))
+            {
+                _viewModel.SelectedSegment = segment;
+                _draggingSegment = segment;
                 _isDragging = true;
                 _dragChanged = false;
                 DrawingCanvas.CaptureMouse();
@@ -1179,6 +1214,19 @@ namespace DispenserEditor.Controls
             if (_isDraggingCrosshair)
             {
                 DragCrosshair(position);
+                return;
+            }
+
+            if (_draggingSegment != null)
+            {
+                var modelPoint = ToModel(position);
+                if (Math.Abs(_draggingSegment.X - modelPoint.X) > double.Epsilon ||
+                    Math.Abs(_draggingSegment.Y - modelPoint.Y) > double.Epsilon)
+                {
+                    _draggingSegment.X = modelPoint.X;
+                    _draggingSegment.Y = modelPoint.Y;
+                    _dragChanged = true;
+                }
                 return;
             }
 
@@ -1220,6 +1268,7 @@ namespace DispenserEditor.Controls
                 }
 
                 _draggingPoint = null;
+                _draggingSegment = null;
                 if (_dragChanged)
                 {
                     _viewModel.SaveSnapshot();
@@ -1279,6 +1328,32 @@ namespace DispenserEditor.Controls
 
             feature = null;
             point = null;
+            return false;
+        }
+
+        private bool TryFindSegment(Point canvasPoint, double radius, out PathSegment segment)
+        {
+            segment = null;
+            if (_viewModel.Segments == null)
+            {
+                return false;
+            }
+
+            foreach (var candidateSegment in _viewModel.Segments)
+            {
+                if (candidateSegment == null)
+                {
+                    continue;
+                }
+
+                var screen = ToCanvas(candidateSegment);
+                if ((screen - canvasPoint).Length <= radius)
+                {
+                    segment = candidateSegment;
+                    return true;
+                }
+            }
+
             return false;
         }
 
