@@ -9,7 +9,9 @@
              mc:Ignorable="d"
              MinHeight="600"
              MinWidth="1024">
-    <Grid>
+    <TabControl>
+        <TabItem Header="Path Editor">
+            <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="7*" />
             <ColumnDefinition Width="3*" MinWidth="300" />
@@ -465,5 +467,116 @@
                 <TextBlock Text="Coordinates are in millimetres (3 decimal places)" />
             </StatusBarItem>
         </StatusBar>
-    </Grid>
+            </Grid>
+        </TabItem>
+        <TabItem Header="Image Viewer">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="7*" />
+                    <ColumnDefinition Width="3*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <ToolBar Grid.ColumnSpan="2"
+                         Background="#e0e4e9"
+                         Padding="6"
+                         BorderThickness="0"
+                         BorderBrush="#FF111820"
+                         ToolBarTray.IsLocked="True">
+                    <ToolBar.Resources>
+                        <SolidColorBrush x:Key="ToolbarButtonBackground" Color="#e0e4e9" />
+                        <SolidColorBrush x:Key="ToolbarButtonHoverBackground" Color="#CBFFF3" />
+                        <SolidColorBrush x:Key="ToolbarButtonPressedBackground" Color="#AEDA97" />
+                        <SolidColorBrush x:Key="ToolbarButtonBorder" Color="#FF3E4B59" />
+
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                            <Setter Property="Margin" Value="4,0" />
+                            <Setter Property="Padding" Value="10,6" />
+                            <Setter Property="Background" Value="{StaticResource ToolbarButtonBackground}" />
+                            <Setter Property="BorderBrush" Value="{StaticResource ToolbarButtonBorder}" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="Foreground" Value="Black" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="4">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"
+                                                              RecognizesAccessKey="True" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource ToolbarButtonHoverBackground}" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource ToolbarButtonPressedBackground}" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.5" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="Black" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Margin" Value="8,0,4,0" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Style>
+
+                        <Style TargetType="fa:IconBlock">
+                            <Setter Property="Foreground" Value="Black" />
+                            <Setter Property="Width" Value="16" />
+                            <Setter Property="Height" Value="16" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                        </Style>
+
+                        <Style TargetType="Slider">
+                            <Setter Property="Margin" Value="4,0" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="Width" Value="140" />
+                        </Style>
+                    </ToolBar.Resources>
+
+                    <Button Click="OnLoadImage">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <fa:IconBlock Icon="Image" Margin="0,0,6,0" />
+                            <TextBlock Text="Load Image" Margin="0" />
+                        </StackPanel>
+                    </Button>
+
+                    <Separator />
+
+                    <TextBlock Text="Opacity:" />
+                    <Slider Minimum="0" Maximum="1" Value="{Binding SelectedItem.OverlayOpacity, Mode=TwoWay}" />
+
+                    <Button Click="OnResetZoom" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <fa:IconBlock Icon="MagnifyingGlassMinus" Margin="0,0,6,0" />
+                            <TextBlock Text="Reset Zoom" Margin="0" />
+                        </StackPanel>
+                    </Button>
+                </ToolBar>
+
+                <Grid Grid.Row="1" Grid.Column="0" Margin="8">
+                    <Border BorderBrush="Gray" BorderThickness="1" Background="Black" ClipToBounds="True">
+                        <Viewbox Stretch="Uniform">
+                            <Image Source="{Binding ReferenceImage}" Stretch="Uniform" />
+                        </Viewbox>
+                    </Border>
+                </Grid>
+            </Grid>
+        </TabItem>
+    </TabControl>
 </UserControl>
