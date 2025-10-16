@@ -615,51 +615,60 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
-            var centerX = SelectedItem.CenterX;
-            var centerY = SelectedItem.CenterY;
+            var oldCenterX = SelectedItem.CenterX;
+            var oldCenterY = SelectedItem.CenterY;
 
+            var newCenterX = Math.Round(oldCenterX * scaleFactor, 3);
+            var newCenterY = Math.Round(oldCenterY * scaleFactor, 3);
+
+            var segmentDisplays = new List<(PathSegment Segment, double X, double Y)>();
             if (Segments != null)
             {
                 foreach (var segment in Segments)
                 {
-                    AdjustCoordinates(segment, scaleFactor, centerX, centerY);
+                    var displayX = SelectedItem.ToDisplayX(segment.X);
+                    var displayY = SelectedItem.ToDisplayY(segment.Y);
+                    segmentDisplays.Add((segment, displayX, displayY));
                 }
             }
 
+            var featureDisplays = new List<(PathPoint Point, double X, double Y)>();
             foreach (var feature in SelectedItem.Features)
             {
                 foreach (var point in feature.Points)
                 {
-                    AdjustCoordinates(point, scaleFactor, centerX, centerY);
+                    var displayX = SelectedItem.ToDisplayX(point.X);
+                    var displayY = SelectedItem.ToDisplayY(point.Y);
+                    featureDisplays.Add((point, displayX, displayY));
                 }
+            }
+
+            SelectedItem.CenterX = newCenterX;
+            SelectedItem.CenterY = newCenterY;
+
+            _appliedCenterX = SelectedItem.CenterX;
+            _appliedCenterY = SelectedItem.CenterY;
+
+            foreach (var (segment, displayX, displayY) in segmentDisplays)
+            {
+                var adjustedDisplayX = displayX * scaleFactor;
+                var adjustedDisplayY = displayY * scaleFactor;
+
+                segment.X = SelectedItem.ToStoredX(adjustedDisplayX);
+                segment.Y = SelectedItem.ToStoredY(adjustedDisplayY);
+            }
+
+            foreach (var (point, displayX, displayY) in featureDisplays)
+            {
+                var adjustedDisplayX = displayX * scaleFactor;
+                var adjustedDisplayY = displayY * scaleFactor;
+
+                point.X = SelectedItem.ToStoredX(adjustedDisplayX);
+                point.Y = SelectedItem.ToStoredY(adjustedDisplayY);
             }
 
             _appliedMillimetresPerPixel = currentValue;
             SaveSnapshot();
-        }
-
-        private void AdjustCoordinates(PathSegment segment, double scaleFactor, double centerX, double centerY)
-        {
-            var displayX = SelectedItem.ToDisplayX(segment.X);
-            var displayY = SelectedItem.ToDisplayY(segment.Y);
-
-            var adjustedDisplayX = centerX + (displayX - centerX) * scaleFactor;
-            var adjustedDisplayY = centerY + (displayY - centerY) * scaleFactor;
-
-            segment.X = SelectedItem.ToStoredX(adjustedDisplayX);
-            segment.Y = SelectedItem.ToStoredY(adjustedDisplayY);
-        }
-
-        private void AdjustCoordinates(PathPoint point, double scaleFactor, double centerX, double centerY)
-        {
-            var displayX = SelectedItem.ToDisplayX(point.X);
-            var displayY = SelectedItem.ToDisplayY(point.Y);
-
-            var adjustedDisplayX = centerX + (displayX - centerX) * scaleFactor;
-            var adjustedDisplayY = centerY + (displayY - centerY) * scaleFactor;
-
-            point.X = SelectedItem.ToStoredX(adjustedDisplayX);
-            point.Y = SelectedItem.ToStoredY(adjustedDisplayY);
         }
 
         private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
