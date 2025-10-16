@@ -1249,6 +1249,22 @@ namespace DispenserEditor.Controls
             RenderFeatures();
         }
 
+        private void OnFlipXCoordinates(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.FlipSelectedItemXCoordinates())
+            {
+                RenderFeatures();
+            }
+        }
+
+        private void OnFlipYCoordinates(object sender, RoutedEventArgs e)
+        {
+            if (_viewModel.FlipSelectedItemYCoordinates())
+            {
+                RenderFeatures();
+            }
+        }
+
         private void ApplyPanOffset()
         {
             _panTransform.X = _panOffset.X;
