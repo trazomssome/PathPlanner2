@@ -399,6 +399,16 @@ namespace DispenserEditor.Controls
             }
         }
 
+        private void OnClearSegmentsClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel?.ClearSegments();
+        }
+
+        private void OnRemoveSegmentClick(object sender, RoutedEventArgs e)
+        {
+            _viewModel?.RemoveSelectedSegment();
+        }
+
         private void UpdateCanvasSize()
         {
             var calculatedBaseScale = CalculateBaseDisplayScale();

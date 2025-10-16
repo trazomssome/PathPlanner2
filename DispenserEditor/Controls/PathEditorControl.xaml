@@ -389,47 +389,60 @@
             </GroupBox>
 
             <GroupBox Header="Segments" Grid.Row="2">
-                <DataGrid x:Name="SegmentGrid"
-                          ItemsSource="{Binding Segments}"
-                          SelectedItem="{Binding SelectedSegment, Mode=TwoWay}"
-                          AutoGenerateColumns="False"
-                          HeadersVisibility="Column"
-                          Margin="8"
-                          CanUserAddRows="True"
-                          CanUserDeleteRows="True"
-                          CellEditEnding="OnSegmentGridCellEditEnding"
-                          RowEditEnding="OnSegmentGridRowEditEnding">
-                    <DataGrid.Columns>
-                        <DataGridComboBoxColumn Header="Type"
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,8,8,0">
+                        <Button Content="Clear" Click="OnClearSegmentsClick" Margin="0,0,8,0" />
+                        <Button Content="Remove" Click="OnRemoveSegmentClick" />
+                    </StackPanel>
+
+                    <DataGrid x:Name="SegmentGrid"
+                              Grid.Row="1"
+                              ItemsSource="{Binding Segments}"
+                              SelectedItem="{Binding SelectedSegment, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              HeadersVisibility="Column"
+                              Margin="8"
+                              CanUserAddRows="True"
+                              CanUserDeleteRows="True"
+                              CellEditEnding="OnSegmentGridCellEditEnding"
+                              RowEditEnding="OnSegmentGridRowEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridComboBoxColumn Header="Type"
+                                                    Width="*"
+                                                    ItemsSource="{Binding Source={StaticResource SegmentTypeValues}}"
+                                                    SelectedItemBinding="{Binding SegmentType, Mode=TwoWay}" />
+                            <DataGridCheckBoxColumn Header="Dispensing"
+                                                     Width="*"
+                                                     Binding="{Binding OnDispensing, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="L.Group"
                                                 Width="*"
-                                                ItemsSource="{Binding Source={StaticResource SegmentTypeValues}}"
-                                                SelectedItemBinding="{Binding SegmentType, Mode=TwoWay}" />
-                        <DataGridCheckBoxColumn Header="Dispensing"
-                                                 Width="*"
-                                                 Binding="{Binding OnDispensing, Mode=TwoWay}" />
-                        <DataGridTextColumn Header="L.Group"
-                                            Width="*"
-                                            Binding="{Binding LineGroup, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="X"
-                                            Width="*"
-                                            Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Y"
-                                            Width="*"
-                                            Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Vel"
-                                            Width="*"
-                                            Binding="{Binding Speed, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Acc"
-                                            Width="*"
-                                            Binding="{Binding Acceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Dec"
-                                            Width="*"
-                                            Binding="{Binding Deceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridCheckBoxColumn Header="Smooth"
-                                                 Width="*"
-                                                 Binding="{Binding AutoSmoothing, Mode=TwoWay}" />
-                    </DataGrid.Columns>
-                </DataGrid>
+                                                Binding="{Binding LineGroup, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="X"
+                                                Width="*"
+                                                Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Y"
+                                                Width="*"
+                                                Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Vel"
+                                                Width="*"
+                                                Binding="{Binding Speed, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Acc"
+                                                Width="*"
+                                                Binding="{Binding Acceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Dec"
+                                                Width="*"
+                                                Binding="{Binding Deceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridCheckBoxColumn Header="Smooth"
+                                                     Width="*"
+                                                     Binding="{Binding AutoSmoothing, Mode=TwoWay}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
             </GroupBox>
             <GroupBox Grid.Row="3">
                 <pt:PropertyGrid SelectedObject="{Binding SelectedSegment}" />
