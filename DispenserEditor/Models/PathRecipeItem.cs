@@ -18,6 +18,7 @@ namespace DispenserEditor.Models
         public PathRecipeItem()
         {
             Features = new ObservableCollection<PathFeature>();
+            Segments = new ObservableCollection<PathSegment>();
         }
 
         [JsonProperty("name")]
@@ -71,6 +72,9 @@ namespace DispenserEditor.Models
 
         [JsonProperty("features")]
         public ObservableCollection<PathFeature> Features { get; }
+
+        [JsonProperty("segments")]
+        public ObservableCollection<PathSegment> Segments { get; }
 
         private static double Clamp(double value, double min, double max)
         {

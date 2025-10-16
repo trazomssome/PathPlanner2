@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -48,6 +50,8 @@ namespace DispenserEditor.Controls
         private readonly TransformGroup _panZoomTransform;
         private bool _suppressRendering;
         private bool _renderPending;
+        private ObservableCollection<PathSegment> _observedSegments = null;
+        private readonly HashSet<PathSegment> _attachedSegments = new HashSet<PathSegment>();
 
         public PathRecipe Recipe
         {
@@ -73,6 +77,7 @@ namespace DispenserEditor.Controls
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
             SetCurrentValue(RecipeProperty, _viewModel.Recipe);
+            RefreshObservedSegments();
         }
 
         private void RequestRenderFeatures()
@@ -137,6 +142,7 @@ namespace DispenserEditor.Controls
                 SetCurrentValue(RecipeProperty, _viewModel.Recipe);
             }
             AttachRecipeHandlers(newRecipe);
+            RefreshObservedSegments();
             RequestRenderFeatures();
         }
 
@@ -252,8 +258,15 @@ namespace DispenserEditor.Controls
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (e.PropertyName == nameof(_viewModel.SelectedItem))
+            {
+                RefreshObservedSegments();
+            }
+
             if (e.PropertyName == nameof(_viewModel.SelectedFeature) ||
-                e.PropertyName == nameof(_viewModel.SelectedItem))
+                e.PropertyName == nameof(_viewModel.SelectedItem) ||
+                e.PropertyName == nameof(_viewModel.SelectedSegment) ||
+                e.PropertyName == nameof(PathEditorViewModel.Segments))
             {
                 RequestRenderFeatures();
             }
@@ -347,11 +360,132 @@ namespace DispenserEditor.Controls
             RequestRenderFeatures();
         }
 
+        private void AttachSegmentHandlers(PathSegment segment)
+        {
+            if (segment == null || _attachedSegments.Contains(segment))
+            {
+                return;
+            }
+
+            segment.PropertyChanged += OnSegmentPropertyChanged;
+            _attachedSegments.Add(segment);
+        }
+
+        private void DetachSegmentHandlers(PathSegment segment)
+        {
+            if (segment == null)
+            {
+                return;
+            }
+
+            if (_attachedSegments.Remove(segment))
+            {
+                segment.PropertyChanged -= OnSegmentPropertyChanged;
+            }
+        }
+
+        private void OnSegmentsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, _observedSegments))
+            {
+                return;
+            }
+
+            if (e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                foreach (var segment in _attachedSegments.ToList())
+                {
+                    DetachSegmentHandlers(segment);
+                }
+
+                if (_observedSegments != null)
+                {
+                    foreach (var segment in _observedSegments)
+                    {
+                        AttachSegmentHandlers(segment);
+                    }
+                }
+
+                _viewModel.SaveSnapshot();
+                RequestRenderFeatures();
+                return;
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (PathSegment segment in e.OldItems)
+                {
+                    DetachSegmentHandlers(segment);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathSegment segment in e.NewItems)
+                {
+                    AttachSegmentHandlers(segment);
+                }
+            }
+
+            if (e.Action == NotifyCollectionChangedAction.Add ||
+                e.Action == NotifyCollectionChangedAction.Remove)
+            {
+                _viewModel.SaveSnapshot();
+            }
+
+            RequestRenderFeatures();
+        }
+
+        private void OnSegmentPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            RequestRenderFeatures();
+        }
+
+        private void RefreshObservedSegments()
+        {
+            if (_observedSegments != null)
+            {
+                _observedSegments.CollectionChanged -= OnSegmentsCollectionChanged;
+            }
+
+            foreach (var segment in _attachedSegments.ToList())
+            {
+                DetachSegmentHandlers(segment);
+            }
+
+            _observedSegments = _viewModel.Segments;
+
+            if (_observedSegments != null)
+            {
+                _observedSegments.CollectionChanged += OnSegmentsCollectionChanged;
+                foreach (var segment in _observedSegments)
+                {
+                    AttachSegmentHandlers(segment);
+                }
+            }
+        }
+
         private void OnFeatureGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
             if (e.EditAction == DataGridEditAction.Commit)
             {
                 _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentGridRowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                Dispatcher.BeginInvoke(new Action(_viewModel.SaveSnapshot), DispatcherPriority.Background);
             }
         }
 
@@ -512,6 +646,12 @@ namespace DispenserEditor.Controls
 
             DrawCrosshair(origin);
 
+            var segments = _viewModel.Segments;
+            if (segments != null && segments.Count > 0)
+            {
+                DrawSegments(segments, opacity);
+            }
+
             var features = _viewModel.Features;
             if (features == null)
             {
@@ -571,13 +711,78 @@ namespace DispenserEditor.Controls
             }
         }
 
+        private void DrawSegments(IList<PathSegment> segments, double opacity)
+        {
+            if (segments == null || segments.Count == 0)
+            {
+                return;
+            }
+
+            var selectedSegment = _viewModel.SelectedSegment;
+
+            var lineBrush = Brushes.MediumSeaGreen.Clone();
+            lineBrush.Opacity = opacity;
+
+            var lineGroups = segments
+                .Where(segment => segment != null && segment.SegmentType == SegmentType.Line)
+                .GroupBy(segment => segment.LineGroup)
+                .Where(group => group.Count() >= 2);
+
+            foreach (var group in lineGroups)
+            {
+                var polyline = new Polyline
+                {
+                    Stroke = lineBrush,
+                    StrokeThickness = 2,
+                    SnapsToDevicePixels = true
+                };
+
+                foreach (var segment in group)
+                {
+                    var canvasPoint = ToCanvas(segment);
+                    polyline.Points.Add(canvasPoint);
+                }
+
+                DrawingCanvas.Children.Add(polyline);
+            }
+
+            foreach (var segment in segments.Where(segment => segment != null))
+            {
+                var canvasPoint = ToCanvas(segment);
+                var isSelected = ReferenceEquals(segment, selectedSegment);
+                var ellipse = new Ellipse
+                {
+                    Width = isSelected ? 14 : 10,
+                    Height = isSelected ? 14 : 10,
+                    Stroke = Brushes.DarkSeaGreen,
+                    StrokeThickness = 1,
+                    Fill = isSelected ? Brushes.LightGreen : Brushes.MediumAquamarine,
+                    Opacity = opacity
+                };
+
+                Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
+                Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
+                DrawingCanvas.Children.Add(ellipse);
+            }
+        }
+
         private Point ToCanvas(PathPoint point)
+        {
+            return ToCanvas(point.X, point.Y);
+        }
+
+        private Point ToCanvas(PathSegment segment)
+        {
+            return ToCanvas(segment.X, segment.Y);
+        }
+
+        private Point ToCanvas(double x, double y)
         {
             var scale = GetScale();
             var origin = GetOrigin(scale);
-            var x = origin.X + point.X * scale;
-            var y = origin.Y + point.Y * scale;
-            return new Point(x, y);
+            var canvasX = origin.X + x * scale;
+            var canvasY = origin.Y + y * scale;
+            return new Point(canvasX, canvasY);
         }
 
         private Point ToModel(Point canvasPoint)
