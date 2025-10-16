@@ -50,6 +50,7 @@ namespace DispenserEditor.ViewModels
         private double _appliedCenterY;
         private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
         private bool _showLinePoints = true;
+        private double _appliedMillimetresPerPixel = 1.0;
 
         public PathEditorViewModel()
         {
@@ -97,6 +98,7 @@ namespace DispenserEditor.ViewModels
 
                 _appliedCenterX = _selectedItem?.CenterX ?? 0;
                 _appliedCenterY = _selectedItem?.CenterY ?? 0;
+                _appliedMillimetresPerPixel = _selectedItem?.MillimetresPerPixel ?? 1.0;
 
                 if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
                 {
@@ -584,6 +586,89 @@ namespace DispenserEditor.ViewModels
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
             }
+            else if (e.PropertyName == nameof(PathRecipeItem.MillimetresPerPixel))
+            {
+                HandleMillimetresPerPixelChanged();
+            }
+        }
+
+        private void HandleMillimetresPerPixelChanged()
+        {
+            if (SelectedItem == null)
+            {
+                return;
+            }
+
+            var previousValue = Math.Max(_appliedMillimetresPerPixel, 0.0001);
+            var currentValue = Math.Max(SelectedItem.MillimetresPerPixel, 0.0001);
+
+            if (Math.Abs(currentValue - previousValue) < double.Epsilon)
+            {
+                _appliedMillimetresPerPixel = currentValue;
+                return;
+            }
+
+            var scaleFactor = currentValue / previousValue;
+            if (Math.Abs(scaleFactor - 1.0) < double.Epsilon)
+            {
+                _appliedMillimetresPerPixel = currentValue;
+                return;
+            }
+
+            var oldCenterX = SelectedItem.CenterX;
+            var oldCenterY = SelectedItem.CenterY;
+
+            var newCenterX = Math.Round(oldCenterX * scaleFactor, 3);
+            var newCenterY = Math.Round(oldCenterY * scaleFactor, 3);
+
+            var segmentDisplays = new List<(PathSegment Segment, double X, double Y)>();
+            if (Segments != null)
+            {
+                foreach (var segment in Segments)
+                {
+                    var displayX = SelectedItem.ToDisplayX(segment.X);
+                    var displayY = SelectedItem.ToDisplayY(segment.Y);
+                    segmentDisplays.Add((segment, displayX, displayY));
+                }
+            }
+
+            var featureDisplays = new List<(PathPoint Point, double X, double Y)>();
+            foreach (var feature in SelectedItem.Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    var displayX = SelectedItem.ToDisplayX(point.X);
+                    var displayY = SelectedItem.ToDisplayY(point.Y);
+                    featureDisplays.Add((point, displayX, displayY));
+                }
+            }
+
+            SelectedItem.CenterX = newCenterX;
+            SelectedItem.CenterY = newCenterY;
+
+            _appliedCenterX = SelectedItem.CenterX;
+            _appliedCenterY = SelectedItem.CenterY;
+
+            foreach (var (segment, displayX, displayY) in segmentDisplays)
+            {
+                var adjustedDisplayX = displayX * scaleFactor;
+                var adjustedDisplayY = displayY * scaleFactor;
+
+                segment.X = SelectedItem.ToStoredX(adjustedDisplayX);
+                segment.Y = SelectedItem.ToStoredY(adjustedDisplayY);
+            }
+
+            foreach (var (point, displayX, displayY) in featureDisplays)
+            {
+                var adjustedDisplayX = displayX * scaleFactor;
+                var adjustedDisplayY = displayY * scaleFactor;
+
+                point.X = SelectedItem.ToStoredX(adjustedDisplayX);
+                point.Y = SelectedItem.ToStoredY(adjustedDisplayY);
+            }
+
+            _appliedMillimetresPerPixel = currentValue;
+            SaveSnapshot();
         }
 
         private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
