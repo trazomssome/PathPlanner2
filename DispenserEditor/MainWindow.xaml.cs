@@ -7,7 +7,6 @@ namespace DispenserEditor
         public MainWindow()
         {
             InitializeComponent();
-            DataContext = Editor.ViewModel;
         }
     }
 }

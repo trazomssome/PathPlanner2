@@ -10,5 +10,12 @@
         Title="Path Editor"
         MinHeight="600"
         MinWidth="1024">    
-    <controls:PathEditorControl x:Name="Editor" Recipe="{Binding Recipe, Mode=OneWay}" />
+    <TabControl>
+        <TabItem Header="Features Recipe">
+            <controls:PathEditorControl x:Name="LegacyEditor" />
+        </TabItem>
+        <TabItem Header="Segments Recipe">
+            <controls:PathSegmentEditorControl x:Name="SegmentEditor" />
+        </TabItem>
+    </TabControl>
 </Window>
