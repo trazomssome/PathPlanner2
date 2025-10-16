@@ -188,6 +188,12 @@
                     <TextBlock Text="Point" Margin="0" />
                 </StackPanel>
             </ToggleButton>
+            <ToggleButton Tag="Segment" Checked="OnModeChanged">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <fa:IconBlock Icon="VectorSquare" Margin="0,0,6,0" />
+                    <TextBlock Text="Segment" Margin="0" />
+                </StackPanel>
+            </ToggleButton>
 
             <ToggleButton IsChecked="{Binding ShowLinePoints, Mode=TwoWay}" Margin="16,0,0,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
