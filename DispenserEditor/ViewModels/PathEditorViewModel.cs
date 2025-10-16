@@ -50,6 +50,7 @@ namespace DispenserEditor.ViewModels
         private double _appliedCenterY;
         private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
         private bool _showLinePoints = true;
+        private double _appliedMillimetresPerPixel = 1.0;
 
         public PathEditorViewModel()
         {
@@ -97,6 +98,7 @@ namespace DispenserEditor.ViewModels
 
                 _appliedCenterX = _selectedItem?.CenterX ?? 0;
                 _appliedCenterY = _selectedItem?.CenterY ?? 0;
+                _appliedMillimetresPerPixel = _selectedItem?.MillimetresPerPixel ?? 1.0;
 
                 if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
                 {
@@ -584,6 +586,80 @@ namespace DispenserEditor.ViewModels
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
             }
+            else if (e.PropertyName == nameof(PathRecipeItem.MillimetresPerPixel))
+            {
+                HandleMillimetresPerPixelChanged();
+            }
+        }
+
+        private void HandleMillimetresPerPixelChanged()
+        {
+            if (SelectedItem == null)
+            {
+                return;
+            }
+
+            var previousValue = Math.Max(_appliedMillimetresPerPixel, 0.0001);
+            var currentValue = Math.Max(SelectedItem.MillimetresPerPixel, 0.0001);
+
+            if (Math.Abs(currentValue - previousValue) < double.Epsilon)
+            {
+                _appliedMillimetresPerPixel = currentValue;
+                return;
+            }
+
+            var scaleFactor = currentValue / previousValue;
+            if (Math.Abs(scaleFactor - 1.0) < double.Epsilon)
+            {
+                _appliedMillimetresPerPixel = currentValue;
+                return;
+            }
+
+            var centerX = SelectedItem.CenterX;
+            var centerY = SelectedItem.CenterY;
+
+            if (Segments != null)
+            {
+                foreach (var segment in Segments)
+                {
+                    AdjustCoordinates(segment, scaleFactor, centerX, centerY);
+                }
+            }
+
+            foreach (var feature in SelectedItem.Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    AdjustCoordinates(point, scaleFactor, centerX, centerY);
+                }
+            }
+
+            _appliedMillimetresPerPixel = currentValue;
+            SaveSnapshot();
+        }
+
+        private void AdjustCoordinates(PathSegment segment, double scaleFactor, double centerX, double centerY)
+        {
+            var displayX = SelectedItem.ToDisplayX(segment.X);
+            var displayY = SelectedItem.ToDisplayY(segment.Y);
+
+            var adjustedDisplayX = centerX + (displayX - centerX) * scaleFactor;
+            var adjustedDisplayY = centerY + (displayY - centerY) * scaleFactor;
+
+            segment.X = SelectedItem.ToStoredX(adjustedDisplayX);
+            segment.Y = SelectedItem.ToStoredY(adjustedDisplayY);
+        }
+
+        private void AdjustCoordinates(PathPoint point, double scaleFactor, double centerX, double centerY)
+        {
+            var displayX = SelectedItem.ToDisplayX(point.X);
+            var displayY = SelectedItem.ToDisplayY(point.Y);
+
+            var adjustedDisplayX = centerX + (displayX - centerX) * scaleFactor;
+            var adjustedDisplayY = centerY + (displayY - centerY) * scaleFactor;
+
+            point.X = SelectedItem.ToStoredX(adjustedDisplayX);
+            point.Y = SelectedItem.ToStoredY(adjustedDisplayY);
         }
 
         private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
