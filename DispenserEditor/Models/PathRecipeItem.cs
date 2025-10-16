@@ -100,18 +100,16 @@ namespace DispenserEditor.Models
 
         public void FlipXCoordinates()
         {
-            var axis = CenterX;
-
             foreach (var segment in Segments)
             {
-                segment.X = Math.Round(2 * axis - segment.X, 3);
+                segment.X = Math.Round(-segment.X, 3);
             }
 
             foreach (var feature in Features)
             {
                 foreach (var point in feature.Points)
                 {
-                    point.X = Math.Round(2 * axis - point.X, 3);
+                    point.X = Math.Round(-point.X, 3);
                 }
             }
 
@@ -120,18 +118,16 @@ namespace DispenserEditor.Models
 
         public void FlipYCoordinates()
         {
-            var axis = CenterY;
-
             foreach (var segment in Segments)
             {
-                segment.Y = Math.Round(2 * axis - segment.Y, 3);
+                segment.Y = Math.Round(-segment.Y, 3);
             }
 
             foreach (var feature in Features)
             {
                 foreach (var point in feature.Points)
                 {
-                    point.Y = Math.Round(2 * axis - point.Y, 3);
+                    point.Y = Math.Round(-point.Y, 3);
                 }
             }
 
@@ -140,22 +136,22 @@ namespace DispenserEditor.Models
 
         public double ToDisplayX(double storedX)
         {
-            return IsXMirrored ? Math.Round(2 * CenterX - storedX, 3) : storedX;
+            return IsXMirrored ? Math.Round(-storedX, 3) : storedX;
         }
 
         public double ToDisplayY(double storedY)
         {
-            return IsYMirrored ? Math.Round(2 * CenterY - storedY, 3) : storedY;
+            return IsYMirrored ? Math.Round(-storedY, 3) : storedY;
         }
 
         public double ToStoredX(double displayX)
         {
-            return IsXMirrored ? Math.Round(2 * CenterX - displayX, 3) : Math.Round(displayX, 3);
+            return IsXMirrored ? Math.Round(-displayX, 3) : Math.Round(displayX, 3);
         }
 
         public double ToStoredY(double displayY)
         {
-            return IsYMirrored ? Math.Round(2 * CenterY - displayY, 3) : Math.Round(displayY, 3);
+            return IsYMirrored ? Math.Round(-displayY, 3) : Math.Round(displayY, 3);
         }
 
         private static double Clamp(double value, double min, double max)
