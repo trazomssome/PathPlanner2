@@ -6,9 +6,20 @@
              xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              xmlns:prpt="http://propertytools.org/wpf"
              xmlns:viewModels="clr-namespace:DispenserEditor.ViewModels"
+             xmlns:models="clr-namespace:DispenserEditor.Models"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d"
              MinHeight="600"
              MinWidth="1024">
+    <UserControl.Resources>
+        <ObjectDataProvider x:Key="SegmentTypeValues"
+                             MethodName="GetValues"
+                             ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="models:SegmentType" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+    </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="7*" />
@@ -279,7 +290,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="3*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
@@ -377,7 +389,63 @@
                 </Grid>
             </GroupBox>
 
-            <GroupBox Header="Features" Grid.Row="2">
+            <GroupBox Header="Segments" Grid.Row="2" Margin="0,0,0,8">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DataGrid x:Name="SegmentGrid"
+                              Grid.Row="0"
+                              ItemsSource="{Binding Segments}"
+                              SelectedItem="{Binding SelectedSegment, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              HeadersVisibility="Column"
+                              Margin="0,0,0,8"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CellEditEnding="OnSegmentGridCellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridComboBoxColumn Header="Type"
+                                                    Width="*"
+                                                    SelectedItemBinding="{Binding SegmentType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    ItemsSource="{Binding Source={StaticResource SegmentTypeValues}}" />
+                            <DataGridCheckBoxColumn Header="Dispense"
+                                                     Width="*"
+                                                     Binding="{Binding OnDispensing, Mode=TwoWay}" />
+                            <DataGridTextColumn Header="Line Group"
+                                                Width="*"
+                                                Binding="{Binding LineGroup, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="X"
+                                                Width="*"
+                                                Binding="{Binding X, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Y"
+                                                Width="*"
+                                                Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Speed"
+                                                Width="*"
+                                                Binding="{Binding Speed, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Acceleration"
+                                                Width="*"
+                                                Binding="{Binding Acceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridTextColumn Header="Deceleration"
+                                                Width="*"
+                                                Binding="{Binding Deceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            <DataGridCheckBoxColumn Header="Auto Smooth"
+                                                     Width="*"
+                                                     Binding="{Binding AutoSmoothing, Mode=TwoWay}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Add" Margin="4,0" Click="OnAddSegment" />
+                        <Button Content="Remove" Margin="4,0" Click="OnRemoveSegment" />
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Features" Grid.Row="3">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="7*" />
@@ -457,7 +525,7 @@
                 </Grid>
             </GroupBox>
 
-            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
+            <TextBlock Grid.Row="4" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
         </Grid>
 
         <StatusBar Grid.Row="2" Grid.ColumnSpan="2">

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -203,9 +204,14 @@ namespace DispenserEditor.Controls
 
             item.PropertyChanged += OnItemPropertyChanged;
             item.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            item.Segments.CollectionChanged += OnSegmentsCollectionChanged;
             foreach (var feature in item.Features)
             {
                 AttachFeatureHandlers(feature);
+            }
+            foreach (var segment in item.Segments)
+            {
+                AttachSegmentHandlers(segment);
             }
         }
 
@@ -218,9 +224,14 @@ namespace DispenserEditor.Controls
 
             item.PropertyChanged -= OnItemPropertyChanged;
             item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            item.Segments.CollectionChanged -= OnSegmentsCollectionChanged;
             foreach (var feature in item.Features)
             {
                 DetachFeatureHandlers(feature);
+            }
+            foreach (var segment in item.Segments)
+            {
+                DetachSegmentHandlers(segment);
             }
         }
 
@@ -253,7 +264,8 @@ namespace DispenserEditor.Controls
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(_viewModel.SelectedFeature) ||
-                e.PropertyName == nameof(_viewModel.SelectedItem))
+                e.PropertyName == nameof(_viewModel.SelectedItem) ||
+                e.PropertyName == nameof(_viewModel.SelectedSegment))
             {
                 RequestRenderFeatures();
             }
@@ -261,7 +273,8 @@ namespace DispenserEditor.Controls
             {
                 SetZoom(DefaultZoom, forceUpdate: true);
             }
-            else if (e.PropertyName == nameof(PathEditorViewModel.ShowLinePoints))
+            else if (e.PropertyName == nameof(PathEditorViewModel.ShowLinePoints) ||
+                     e.PropertyName == nameof(PathEditorViewModel.Segments))
             {
                 RequestRenderFeatures();
             }
@@ -296,6 +309,27 @@ namespace DispenserEditor.Controls
             RequestRenderFeatures();
         }
 
+        private void OnSegmentsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (PathSegment segment in e.OldItems)
+                {
+                    DetachSegmentHandlers(segment);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathSegment segment in e.NewItems)
+                {
+                    AttachSegmentHandlers(segment);
+                }
+            }
+
+            RequestRenderFeatures();
+        }
+
         private void AttachFeatureHandlers(PathFeature feature)
         {
             feature.PropertyChanged += OnFeaturePropertyChanged;
@@ -306,6 +340,16 @@ namespace DispenserEditor.Controls
             }
         }
 
+        private void AttachSegmentHandlers(PathSegment segment)
+        {
+            if (segment == null)
+            {
+                return;
+            }
+
+            segment.PropertyChanged += OnSegmentPropertyChanged;
+        }
+
         private void DetachFeatureHandlers(PathFeature feature)
         {
             feature.PropertyChanged -= OnFeaturePropertyChanged;
@@ -314,6 +358,16 @@ namespace DispenserEditor.Controls
             {
                 point.PropertyChanged -= OnPointPropertyChanged;
             }
+        }
+
+        private void DetachSegmentHandlers(PathSegment segment)
+        {
+            if (segment == null)
+            {
+                return;
+            }
+
+            segment.PropertyChanged -= OnSegmentPropertyChanged;
         }
 
         private void OnFeaturePropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -347,7 +401,20 @@ namespace DispenserEditor.Controls
             RequestRenderFeatures();
         }
 
+        private void OnSegmentPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            RequestRenderFeatures();
+        }
+
         private void OnFeatureGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
             if (e.EditAction == DataGridEditAction.Commit)
             {
@@ -513,61 +580,140 @@ namespace DispenserEditor.Controls
             DrawCrosshair(origin);
 
             var features = _viewModel.Features;
-            if (features == null)
+            if (features != null)
             {
-                return;
-            }
+                var showLinePoints = _viewModel.ShowLinePoints;
 
-            var showLinePoints = _viewModel.ShowLinePoints;
-
-            foreach (var feature in features)
-            {
-                var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
-                strokeBrush = strokeBrush.Clone();
-                strokeBrush.Opacity = opacity;
-
-                if (feature.Type == PathFeatureType.Line && feature.Points.Count >= 2)
+                foreach (var feature in features)
                 {
-                    var polyline = new Polyline
+                    var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
+                    strokeBrush = strokeBrush.Clone();
+                    strokeBrush.Opacity = opacity;
+
+                    if (feature.Type == PathFeatureType.Line && feature.Points.Count >= 2)
                     {
-                        Stroke = strokeBrush,
-                        StrokeThickness = 2,
-                        SnapsToDevicePixels = true
-                    };
+                        var polyline = new Polyline
+                        {
+                            Stroke = strokeBrush,
+                            StrokeThickness = 2,
+                            SnapsToDevicePixels = true
+                        };
+
+                        foreach (var point in feature.Points)
+                        {
+                            var canvasPoint = ToCanvas(point);
+                            polyline.Points.Add(canvasPoint);
+                        }
+
+                        DrawingCanvas.Children.Add(polyline);
+                    }
+
+                    var showFeaturePoints = feature.Type != PathFeatureType.Line || showLinePoints;
+
+                    if (!showFeaturePoints)
+                    {
+                        continue;
+                    }
 
                     foreach (var point in feature.Points)
                     {
                         var canvasPoint = ToCanvas(point);
-                        polyline.Points.Add(canvasPoint);
+                        var ellipse = new Ellipse
+                        {
+                            Width = feature.IsSelected ? 14 : 10,
+                            Height = feature.IsSelected ? 14 : 10,
+                            Stroke = Brushes.Black,
+                            StrokeThickness = 1,
+                            Fill = feature.IsSelected ? Brushes.LightSkyBlue : Brushes.Gold,
+                            Opacity = opacity
+                        };
+
+                        Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
+                        Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
+                        DrawingCanvas.Children.Add(ellipse);
                     }
-
-                    DrawingCanvas.Children.Add(polyline);
                 }
+            }
 
-                var showFeaturePoints = feature.Type != PathFeatureType.Line || showLinePoints;
+            var segments = _viewModel.Segments;
+            if (segments != null && segments.Any())
+            {
+                RenderSegments(segments, opacity);
+            }
+        }
 
-                if (!showFeaturePoints)
+        private void RenderSegments(IEnumerable<PathSegment> segments, double opacity)
+        {
+            if (segments == null)
+            {
+                return;
+            }
+
+            var segmentList = segments.Where(segment => segment != null).ToList();
+            if (!segmentList.Any())
+            {
+                return;
+            }
+
+            var lineGroups = new Dictionary<int, List<PathSegment>>();
+            foreach (var segment in segmentList)
+            {
+                if (segment.SegmentType != SegmentType.Line)
                 {
                     continue;
                 }
 
-                foreach (var point in feature.Points)
+                if (!lineGroups.TryGetValue(segment.LineGroup, out var group))
                 {
-                    var canvasPoint = ToCanvas(point);
-                    var ellipse = new Ellipse
-                    {
-                        Width = feature.IsSelected ? 14 : 10,
-                        Height = feature.IsSelected ? 14 : 10,
-                        Stroke = Brushes.Black,
-                        StrokeThickness = 1,
-                        Fill = feature.IsSelected ? Brushes.LightSkyBlue : Brushes.Gold,
-                        Opacity = opacity
-                    };
-
-                    Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
-                    Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
-                    DrawingCanvas.Children.Add(ellipse);
+                    group = new List<PathSegment>();
+                    lineGroups[segment.LineGroup] = group;
                 }
+
+                group.Add(segment);
+            }
+
+            foreach (var group in lineGroups.Values)
+            {
+                if (group.Count < 2)
+                {
+                    continue;
+                }
+
+                var isSelectedGroup = group.Any(segment => ReferenceEquals(segment, _viewModel.SelectedSegment));
+                var polyline = new Polyline
+                {
+                    Stroke = isSelectedGroup ? Brushes.DodgerBlue : Brushes.MediumSeaGreen,
+                    StrokeThickness = isSelectedGroup ? 3 : 2,
+                    SnapsToDevicePixels = true,
+                    Opacity = opacity
+                };
+
+                foreach (var segment in group)
+                {
+                    var canvasPoint = ToCanvas(segment);
+                    polyline.Points.Add(canvasPoint);
+                }
+
+                DrawingCanvas.Children.Add(polyline);
+            }
+
+            foreach (var segment in segmentList)
+            {
+                var canvasPoint = ToCanvas(segment);
+                var isSelected = ReferenceEquals(segment, _viewModel.SelectedSegment);
+                var ellipse = new Ellipse
+                {
+                    Width = isSelected ? 14 : 10,
+                    Height = isSelected ? 14 : 10,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1,
+                    Fill = isSelected ? Brushes.DeepSkyBlue : Brushes.LightGreen,
+                    Opacity = opacity
+                };
+
+                Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
+                Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
+                DrawingCanvas.Children.Add(ellipse);
             }
         }
 
@@ -577,6 +723,15 @@ namespace DispenserEditor.Controls
             var origin = GetOrigin(scale);
             var x = origin.X + point.X * scale;
             var y = origin.Y + point.Y * scale;
+            return new Point(x, y);
+        }
+
+        private Point ToCanvas(PathSegment segment)
+        {
+            var scale = GetScale();
+            var origin = GetOrigin(scale);
+            var x = origin.X + segment.X * scale;
+            var y = origin.Y + segment.Y * scale;
             return new Point(x, y);
         }
 
@@ -1244,6 +1399,18 @@ namespace DispenserEditor.Controls
             _viewModel.SaveSnapshot();
             _viewModel.StatusMessage = "Cleared all features.";
             RenderFeatures();
+        }
+
+        private void OnAddSegment(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AddSegment();
+            RequestRenderFeatures();
+        }
+
+        private void OnRemoveSegment(object sender, RoutedEventArgs e)
+        {
+            _viewModel.RemoveSelectedSegment();
+            RequestRenderFeatures();
         }
 
         private void OnAddItem(object sender, RoutedEventArgs e)
