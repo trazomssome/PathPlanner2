@@ -7,6 +7,7 @@
              xmlns:models="clr-namespace:DispenserEditor.Models"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:viewModels="clr-namespace:DispenserEditor.ViewModels"
+             xmlns:pt="http://propertytools.org/wpf"
              mc:Ignorable="d"
              MinHeight="600"
              MinWidth="1024">
@@ -288,7 +289,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="7*" />
+                <RowDefinition Height="3*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
@@ -402,10 +404,10 @@
                                                 Width="*"
                                                 ItemsSource="{Binding Source={StaticResource SegmentTypeValues}}"
                                                 SelectedItemBinding="{Binding SegmentType, Mode=TwoWay}" />
-                        <DataGridCheckBoxColumn Header="Dispense"
+                        <DataGridCheckBoxColumn Header="Dispensing"
                                                  Width="*"
                                                  Binding="{Binding OnDispensing, Mode=TwoWay}" />
-                        <DataGridTextColumn Header="Line Group"
+                        <DataGridTextColumn Header="L.Group"
                                             Width="*"
                                             Binding="{Binding LineGroup, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                         <DataGridTextColumn Header="X"
@@ -414,23 +416,26 @@
                         <DataGridTextColumn Header="Y"
                                             Width="*"
                                             Binding="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Speed"
+                        <DataGridTextColumn Header="Vel"
                                             Width="*"
                                             Binding="{Binding Speed, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Acceleration"
+                        <DataGridTextColumn Header="Acc"
                                             Width="*"
                                             Binding="{Binding Acceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridTextColumn Header="Deceleration"
+                        <DataGridTextColumn Header="Dec"
                                             Width="*"
                                             Binding="{Binding Deceleration, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                        <DataGridCheckBoxColumn Header="Auto Smooth"
+                        <DataGridCheckBoxColumn Header="Smooth"
                                                  Width="*"
                                                  Binding="{Binding AutoSmoothing, Mode=TwoWay}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </GroupBox>
+            <GroupBox Grid.Row="3">
+                <pt:PropertyGrid SelectedObject="{Binding SelectedSegment}" />
+            </GroupBox>
 
-            <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
+            <TextBlock Grid.Row="4" Text="{Binding StatusMessage}" Margin="0,8,0,0" Foreground="DarkSlateGray" />
         </Grid>
 
         <StatusBar Grid.Row="2" Grid.ColumnSpan="2">
