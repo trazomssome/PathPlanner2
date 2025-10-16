@@ -13,6 +13,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using DispenserEditor.Models;
 using DispenserEditor.ViewModels;
+using PathSegment = DispenserEditor.Models.PathSegment;
 
 namespace DispenserEditor.Controls
 {

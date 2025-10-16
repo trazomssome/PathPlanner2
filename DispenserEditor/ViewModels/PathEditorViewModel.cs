@@ -11,6 +11,7 @@ using DispenserEditor.Infrastructure;
 using DispenserEditor.Models;
 using Microsoft.Win32;
 using Newtonsoft.Json;
+using PathSegment = DispenserEditor.Models.PathSegment;
 
 namespace DispenserEditor.ViewModels
 {
