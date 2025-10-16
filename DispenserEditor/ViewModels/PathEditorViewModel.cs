@@ -19,8 +19,7 @@ namespace DispenserEditor.ViewModels
     {
         Move,
         Point,
-        Line,
-        Segment
+        Line
     }
 
     public enum CrosshairMoveMode
@@ -35,12 +34,7 @@ namespace DispenserEditor.ViewModels
         private readonly Stack<string> _redoStack = new Stack<string>();
         private PathRecipe _recipe;
         private PathRecipeItem _selectedItem = null;
-        private PathFeature _selectedFeature = null;
-        private PathPoint _selectedPoint = null;
-        private FeatureListEntry _selectedEntry = null;
         private PathSegment _selectedSegment = null;
-        private bool _synchronizingSelection;
-        private bool _isUpdatingFeatureEntries;
         private DrawingMode _currentMode = DrawingMode.Move;
         private ImageSource _referenceImage = null;
         private double _imageWidth = 800;
@@ -53,7 +47,6 @@ namespace DispenserEditor.ViewModels
 
         public PathEditorViewModel()
         {
-            FeatureEntries = new ObservableCollection<FeatureListEntry>();
             LoadRecipe(new PathRecipe(), initializeHistory: true);
         }
 
@@ -67,7 +60,6 @@ namespace DispenserEditor.ViewModels
                     _recipe = value;
                     RaisePropertyChanged();
                     RaisePropertyChanged(nameof(Items));
-                    RaisePropertyChanged(nameof(Features));
                     RaisePropertyChanged(nameof(Segments));
                 }
             }
@@ -106,22 +98,15 @@ namespace DispenserEditor.ViewModels
                 }
 
                 RaisePropertyChanged(nameof(SelectedItem));
-                RaisePropertyChanged(nameof(Features));
                 RaisePropertyChanged(nameof(Segments));
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
 
-                UpdateFeatureEntries();
-                SelectedFeature = SelectedItem?.Features.FirstOrDefault();
                 SelectedSegment = SelectedItem?.Segments.FirstOrDefault();
             }
         }
 
-        public ObservableCollection<PathFeature> Features => SelectedItem?.Features;
-
         public ObservableCollection<PathSegment> Segments => SelectedItem?.Segments;
-
-        public ObservableCollection<FeatureListEntry> FeatureEntries { get; }
 
         public void LoadRecipe(PathRecipe recipe)
         {
@@ -224,35 +209,10 @@ namespace DispenserEditor.ViewModels
             }
         }
 
-        public PathFeature SelectedFeature
-        {
-            get => _selectedFeature;
-            set
-            {
-                if (SetProperty(ref _selectedFeature, value))
-                {
-                    UpdateSelection(value);
-                    SynchronizeSelectedEntry(value);
-                }
-            }
-        }
-
         public PathSegment SelectedSegment
         {
             get => _selectedSegment;
             set => SetProperty(ref _selectedSegment, value);
-        }
-
-        public PathPoint SelectedPoint
-        {
-            get => _selectedPoint;
-            set => SetProperty(ref _selectedPoint, value);
-        }
-
-        public FeatureListEntry SelectedEntry
-        {
-            get => _selectedEntry;
-            set => UpdateSelectedEntry(value, true);
         }
 
         public DrawingMode CurrentMode
@@ -402,51 +362,11 @@ namespace DispenserEditor.ViewModels
             }
         }
 
-        public void RemoveSelectedFeature()
-        {
-            if (Features == null || SelectedFeature == null)
-            {
-                return;
-            }
-
-            Features.Remove(SelectedFeature);
-            SaveSnapshot();
-            SelectedFeature = null;
-        }
-
-        public void EnsureFeatureNames()
-        {
-            if (Features == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < Features.Count; i++)
-            {
-                if (string.IsNullOrWhiteSpace(Features[i].Name))
-                {
-                    Features[i].Name = $"Feature {i + 1}";
-                }
-            }
-        }
-
         public void ShiftAllPoints(double offsetX, double offsetY)
         {
             if (Math.Abs(offsetX) < double.Epsilon && Math.Abs(offsetY) < double.Epsilon)
             {
                 return;
-            }
-
-            if (Features != null)
-            {
-                foreach (var feature in Features)
-                {
-                    foreach (var point in feature.Points)
-                    {
-                        point.X += offsetX;
-                        point.Y += offsetY;
-                    }
-                }
             }
 
             if (Segments != null)
@@ -532,11 +452,6 @@ namespace DispenserEditor.ViewModels
             }
 
             item.PropertyChanged += OnItemPropertyChanged;
-            item.Features.CollectionChanged += OnFeaturesCollectionChanged;
-            foreach (var feature in item.Features)
-            {
-                AttachFeature(feature);
-            }
         }
 
         private void DetachItem(PathRecipeItem item)
@@ -547,31 +462,6 @@ namespace DispenserEditor.ViewModels
             }
 
             item.PropertyChanged -= OnItemPropertyChanged;
-            item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
-            foreach (var feature in item.Features)
-            {
-                DetachFeature(feature);
-            }
-        }
-
-        private void AttachFeature(PathFeature feature)
-        {
-            feature.PropertyChanged += OnFeaturePropertyChanged;
-            feature.Points.CollectionChanged += OnFeaturePointsChanged;
-            foreach (var point in feature.Points)
-            {
-                point.PropertyChanged += OnPointPropertyChanged;
-            }
-        }
-
-        private void DetachFeature(PathFeature feature)
-        {
-            feature.PropertyChanged -= OnFeaturePropertyChanged;
-            feature.Points.CollectionChanged -= OnFeaturePointsChanged;
-            foreach (var point in feature.Points)
-            {
-                point.PropertyChanged -= OnPointPropertyChanged;
-            }
         }
 
         private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -587,11 +477,6 @@ namespace DispenserEditor.ViewModels
                 _appliedCenterY = SelectedItem.CenterY;
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
-            }
-            else if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity) ||
-                     e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
-            {
-                UpdateFeatureEntries();
             }
         }
 
@@ -626,62 +511,6 @@ namespace DispenserEditor.ViewModels
             }
 
             RaisePropertyChanged(nameof(Items));
-        }
-
-        private void OnFeaturesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (e.OldItems != null)
-            {
-                foreach (PathFeature feature in e.OldItems)
-                {
-                    DetachFeature(feature);
-                }
-            }
-
-            if (e.NewItems != null)
-            {
-                foreach (PathFeature feature in e.NewItems)
-                {
-                    AttachFeature(feature);
-                }
-            }
-
-            if (ReferenceEquals(sender, SelectedItem?.Features))
-            {
-                RaisePropertyChanged(nameof(Features));
-                UpdateFeatureEntries();
-            }
-        }
-
-        private void OnFeaturePropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            UpdateFeatureEntries();
-        }
-
-        private void OnFeaturePointsChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (e.OldItems != null)
-            {
-                foreach (PathPoint point in e.OldItems)
-                {
-                    point.PropertyChanged -= OnPointPropertyChanged;
-                }
-            }
-
-            if (e.NewItems != null)
-            {
-                foreach (PathPoint point in e.NewItems)
-                {
-                    point.PropertyChanged += OnPointPropertyChanged;
-                }
-            }
-
-            UpdateFeatureEntries();
-        }
-
-        private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            UpdateFeatureEntries();
         }
 
         private void RestoreFromJson(string json)
@@ -745,34 +574,9 @@ namespace DispenserEditor.ViewModels
                 RaisePropertyChanged(nameof(AppliedCenterY));
             }
 
-            SelectedFeature = SelectedItem?.Features.FirstOrDefault();
             StatusMessage = "Recipe restored";
             RaisePropertyChanged(nameof(Items));
-            RaisePropertyChanged(nameof(Features));
-            UpdateFeatureEntries();
-        }
-
-        private void UpdateSelection(PathFeature feature)
-        {
-            if (Features == null)
-            {
-                SelectedPoint = null;
-                return;
-            }
-
-            foreach (var f in Features)
-            {
-                f.IsSelected = f == feature;
-            }
-
-            if (feature != null)
-            {
-                SelectedPoint = feature.Points.FirstOrDefault();
-            }
-            else
-            {
-                SelectedPoint = null;
-            }
+            RaisePropertyChanged(nameof(Segments));
         }
 
         private void OnSelectedItemSegmentsChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -802,115 +606,5 @@ namespace DispenserEditor.ViewModels
             }
         }
 
-        private void UpdateFeatureEntries()
-        {
-            if (_isUpdatingFeatureEntries)
-            {
-                return;
-            }
-
-            _isUpdatingFeatureEntries = true;
-
-            var previousEntry = _selectedEntry;
-
-            try
-            {
-                foreach (var entry in FeatureEntries)
-                {
-                    entry.Dispose();
-                }
-                FeatureEntries.Clear();
-
-                if (Features == null)
-                {
-                    UpdateSelectedEntry(null, false);
-                    return;
-                }
-
-                foreach (var feature in Features)
-                {
-                    if (feature.Type == PathFeatureType.Line)
-                    {
-                        for (int i = 0; i < feature.Points.Count; i++)
-                        {
-                            var point = feature.Points[i];
-                            FeatureEntries.Add(FeatureListEntry.ForLinePoint(feature, point, i));
-                        }
-                    }
-                    else
-                    {
-                        var point = feature.Points.FirstOrDefault();
-                        FeatureEntries.Add(FeatureListEntry.ForPoint(feature, point));
-                    }
-                }
-            
-                FeatureListEntry target = null;
-                if (previousEntry != null)
-                {
-                    target = FeatureEntries.FirstOrDefault(entry =>
-                        ReferenceEquals(entry.Feature, previousEntry.Feature) &&
-                        entry.SegmentIndex == previousEntry.SegmentIndex &&
-                        ReferenceEquals(entry.Point, previousEntry.Point));
-                }
-                if (target == null && SelectedFeature != null)
-                {
-                    target = FeatureEntries.FirstOrDefault(entry => ReferenceEquals(entry.Feature, SelectedFeature));
-                }
-
-                if (target == null && FeatureEntries.Count > 0)
-                {
-                    target = FeatureEntries.First();
-                }
-
-                UpdateSelectedEntry(target, false);
-            }
-            finally
-            {
-                _isUpdatingFeatureEntries = false;
-            }
-        }
-
-        private void UpdateSelectedEntry(FeatureListEntry entry, bool updateFeature)
-        {
-            if (ReferenceEquals(_selectedEntry, entry))
-            {
-                return;
-            }
-
-            _selectedEntry = entry;
-            RaisePropertyChanged(nameof(SelectedEntry));
-
-            if (updateFeature && !_synchronizingSelection)
-            {
-                try
-                {
-                    _synchronizingSelection = true;
-                    SelectedFeature = entry?.Feature;
-                }
-                finally
-                {
-                    _synchronizingSelection = false;
-                }
-            }
-        }
-
-        private void SynchronizeSelectedEntry(PathFeature feature)
-        {
-            if (_synchronizingSelection)
-            {
-                return;
-            }
-
-            try
-            {
-                _synchronizingSelection = true;
-                var entry = FeatureEntries.FirstOrDefault(item => ReferenceEquals(item.Feature, feature));
-                UpdateSelectedEntry(entry, false);
-            }
-            finally
-            {
-                _synchronizingSelection = false;
-            }
-        }
     }
 }
