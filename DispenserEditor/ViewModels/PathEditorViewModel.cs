@@ -422,6 +422,26 @@ namespace DispenserEditor.ViewModels
             return FlipSelectedItemCoordinates(CoordinateAxis.Y);
         }
 
+        public double ToDisplayX(double storedX)
+        {
+            return SelectedItem?.ToDisplayX(storedX) ?? Math.Round(storedX, 3);
+        }
+
+        public double ToDisplayY(double storedY)
+        {
+            return SelectedItem?.ToDisplayY(storedY) ?? Math.Round(storedY, 3);
+        }
+
+        public double ToStoredX(double displayX)
+        {
+            return SelectedItem?.ToStoredX(displayX) ?? Math.Round(displayX, 3);
+        }
+
+        public double ToStoredY(double displayY)
+        {
+            return SelectedItem?.ToStoredY(displayY) ?? Math.Round(displayY, 3);
+        }
+
         private bool FlipSelectedItemCoordinates(CoordinateAxis axis)
         {
             if (SelectedItem == null)
