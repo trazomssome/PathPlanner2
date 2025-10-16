@@ -76,6 +76,42 @@ namespace DispenserEditor.Models
         [JsonProperty("segments")]
         public ObservableCollection<PathSegment> Segments { get; }
 
+        public void FlipXCoordinates()
+        {
+            var axis = CenterX;
+
+            foreach (var segment in Segments)
+            {
+                segment.X = Math.Round(2 * axis - segment.X, 3);
+            }
+
+            foreach (var feature in Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    point.X = Math.Round(2 * axis - point.X, 3);
+                }
+            }
+        }
+
+        public void FlipYCoordinates()
+        {
+            var axis = CenterY;
+
+            foreach (var segment in Segments)
+            {
+                segment.Y = Math.Round(2 * axis - segment.Y, 3);
+            }
+
+            foreach (var feature in Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    point.Y = Math.Round(2 * axis - point.Y, 3);
+                }
+            }
+        }
+
         private static double Clamp(double value, double min, double max)
         {
             if (value < min)
