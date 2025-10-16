@@ -472,7 +472,20 @@ namespace DispenserEditor.ViewModels
 
         public void ShiftAllPoints(double offsetX, double offsetY)
         {
+            if (SelectedItem == null)
+            {
+                return;
+            }
+
             if (Math.Abs(offsetX) < double.Epsilon && Math.Abs(offsetY) < double.Epsilon)
+            {
+                return;
+            }
+
+            var storedOffsetX = SelectedItem.IsXMirrored ? -offsetX : offsetX;
+            var storedOffsetY = SelectedItem.IsYMirrored ? -offsetY : offsetY;
+
+            if (Math.Abs(storedOffsetX) < double.Epsilon && Math.Abs(storedOffsetY) < double.Epsilon)
             {
                 return;
             }
@@ -481,8 +494,17 @@ namespace DispenserEditor.ViewModels
             {
                 foreach (var segment in Segments)
                 {
-                    segment.X += offsetX;
-                    segment.Y += offsetY;
+                    segment.X += storedOffsetX;
+                    segment.Y += storedOffsetY;
+                }
+            }
+
+            foreach (var feature in SelectedItem.Features)
+            {
+                foreach (var point in feature.Points)
+                {
+                    point.X += storedOffsetX;
+                    point.Y += storedOffsetY;
                 }
             }
         }
