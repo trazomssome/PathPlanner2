@@ -79,6 +79,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Controls\PathSegmentEditorControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -89,6 +93,10 @@
     </Compile>
     <Compile Include="Controls\PathEditorControl.xaml.cs">
       <DependentUpon>PathEditorControl.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Controls\PathSegmentEditorControl.xaml.cs">
+      <DependentUpon>PathSegmentEditorControl.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Infrastructure\ObservableObject.cs" />
@@ -103,6 +111,7 @@
     <Compile Include="Models\PathRecipeItem.cs" />
     <Compile Include="ViewModels\FeatureListEntry.cs" />
     <Compile Include="ViewModels\PathEditorViewModel.cs" />
+    <Compile Include="ViewModels\PathSegmentEditorViewModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
