@@ -9,6 +9,6 @@
         mc:Ignorable="d"
         Title="Path Editor"
         MinHeight="600"
-        MinWidth="1024">    
+        MinWidth="1024">
     <controls:PathEditorControl x:Name="Editor" Recipe="{Binding Recipe, Mode=OneWay}" />
 </Window>

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -11,6 +13,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using DispenserEditor.Models;
 using DispenserEditor.ViewModels;
+using PathSegment = DispenserEditor.Models.PathSegment;
 
 namespace DispenserEditor.Controls
 {
@@ -24,8 +27,8 @@ namespace DispenserEditor.Controls
 
         private readonly PathEditorViewModel _viewModel;
         private PathRecipe _currentRecipe;
-        private PathFeature _activeLineFeature = null;
-        private PathPoint _draggingPoint = null;
+        private int? _activeLineGroup = null;
+        private PathSegment _draggingSegment = null;
         private bool _isDragging;
         private bool _dragChanged;
         private bool _isDraggingCrosshair;
@@ -48,6 +51,8 @@ namespace DispenserEditor.Controls
         private readonly TransformGroup _panZoomTransform;
         private bool _suppressRendering;
         private bool _renderPending;
+        private ObservableCollection<PathSegment> _observedSegments = null;
+        private readonly HashSet<PathSegment> _attachedSegments = new HashSet<PathSegment>();
 
         public PathRecipe Recipe
         {
@@ -73,6 +78,7 @@ namespace DispenserEditor.Controls
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
             SetCurrentValue(RecipeProperty, _viewModel.Recipe);
+            RefreshObservedSegments();
         }
 
         private void RequestRenderFeatures()
@@ -137,6 +143,7 @@ namespace DispenserEditor.Controls
                 SetCurrentValue(RecipeProperty, _viewModel.Recipe);
             }
             AttachRecipeHandlers(newRecipe);
+            RefreshObservedSegments();
             RequestRenderFeatures();
         }
 
@@ -202,11 +209,6 @@ namespace DispenserEditor.Controls
             }
 
             item.PropertyChanged += OnItemPropertyChanged;
-            item.Features.CollectionChanged += OnFeaturesCollectionChanged;
-            foreach (var feature in item.Features)
-            {
-                AttachFeatureHandlers(feature);
-            }
         }
 
         private void DetachItemHandlers(PathRecipeItem item)
@@ -217,11 +219,6 @@ namespace DispenserEditor.Controls
             }
 
             item.PropertyChanged -= OnItemPropertyChanged;
-            item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
-            foreach (var feature in item.Features)
-            {
-                DetachFeatureHandlers(feature);
-            }
         }
 
         private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -252,8 +249,14 @@ namespace DispenserEditor.Controls
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(_viewModel.SelectedFeature) ||
-                e.PropertyName == nameof(_viewModel.SelectedItem))
+            if (e.PropertyName == nameof(_viewModel.SelectedItem))
+            {
+                RefreshObservedSegments();
+            }
+
+            if (e.PropertyName == nameof(_viewModel.SelectedItem) ||
+                e.PropertyName == nameof(_viewModel.SelectedSegment) ||
+                e.PropertyName == nameof(PathEditorViewModel.Segments))
             {
                 RequestRenderFeatures();
             }
@@ -275,83 +278,124 @@ namespace DispenserEditor.Controls
             }
         }
 
-        private void OnFeaturesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void AttachSegmentHandlers(PathSegment segment)
         {
+            if (segment == null || _attachedSegments.Contains(segment))
+            {
+                return;
+            }
+
+            segment.PropertyChanged += OnSegmentPropertyChanged;
+            _attachedSegments.Add(segment);
+        }
+
+        private void DetachSegmentHandlers(PathSegment segment)
+        {
+            if (segment == null)
+            {
+                return;
+            }
+
+            if (_attachedSegments.Remove(segment))
+            {
+                segment.PropertyChanged -= OnSegmentPropertyChanged;
+            }
+        }
+
+        private void OnSegmentsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, _observedSegments))
+            {
+                return;
+            }
+
+            if (e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                foreach (var segment in _attachedSegments.ToList())
+                {
+                    DetachSegmentHandlers(segment);
+                }
+
+                if (_observedSegments != null)
+                {
+                    foreach (var segment in _observedSegments)
+                    {
+                        AttachSegmentHandlers(segment);
+                    }
+                }
+
+                _viewModel.SaveSnapshot();
+                RequestRenderFeatures();
+                return;
+            }
+
             if (e.OldItems != null)
             {
-                foreach (PathFeature feature in e.OldItems)
+                foreach (PathSegment segment in e.OldItems)
                 {
-                    DetachFeatureHandlers(feature);
+                    DetachSegmentHandlers(segment);
                 }
             }
 
             if (e.NewItems != null)
             {
-                foreach (PathFeature feature in e.NewItems)
+                foreach (PathSegment segment in e.NewItems)
                 {
-                    AttachFeatureHandlers(feature);
+                    AttachSegmentHandlers(segment);
                 }
             }
 
+            if (e.Action == NotifyCollectionChangedAction.Add ||
+                e.Action == NotifyCollectionChangedAction.Remove)
+            {
+                _viewModel.SaveSnapshot();
+            }
+
             RequestRenderFeatures();
         }
 
-        private void AttachFeatureHandlers(PathFeature feature)
-        {
-            feature.PropertyChanged += OnFeaturePropertyChanged;
-            feature.Points.CollectionChanged += OnPointsCollectionChanged;
-            foreach (var point in feature.Points)
-            {
-                point.PropertyChanged += OnPointPropertyChanged;
-            }
-        }
-
-        private void DetachFeatureHandlers(PathFeature feature)
-        {
-            feature.PropertyChanged -= OnFeaturePropertyChanged;
-            feature.Points.CollectionChanged -= OnPointsCollectionChanged;
-            foreach (var point in feature.Points)
-            {
-                point.PropertyChanged -= OnPointPropertyChanged;
-            }
-        }
-
-        private void OnFeaturePropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnSegmentPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             RequestRenderFeatures();
         }
 
-        private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void RefreshObservedSegments()
         {
-            if (e.OldItems != null)
+            if (_observedSegments != null)
             {
-                foreach (PathPoint point in e.OldItems)
+                _observedSegments.CollectionChanged -= OnSegmentsCollectionChanged;
+            }
+
+            foreach (var segment in _attachedSegments.ToList())
+            {
+                DetachSegmentHandlers(segment);
+            }
+
+            _observedSegments = _viewModel.Segments;
+
+            if (_observedSegments != null)
+            {
+                _observedSegments.CollectionChanged += OnSegmentsCollectionChanged;
+                foreach (var segment in _observedSegments)
                 {
-                    point.PropertyChanged -= OnPointPropertyChanged;
+                    AttachSegmentHandlers(segment);
                 }
             }
-
-            if (e.NewItems != null)
-            {
-                foreach (PathPoint point in e.NewItems)
-                {
-                    point.PropertyChanged += OnPointPropertyChanged;
-                }
-            }
-
-            RequestRenderFeatures();
         }
 
-        private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            RequestRenderFeatures();
-        }
-
-        private void OnFeatureGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        private void OnSegmentGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
             if (e.EditAction == DataGridEditAction.Commit)
             {
                 _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentGridRowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                Dispatcher.BeginInvoke(new Action(_viewModel.SaveSnapshot), DispatcherPriority.Background);
             }
         }
 
@@ -512,72 +556,87 @@ namespace DispenserEditor.Controls
 
             DrawCrosshair(origin);
 
-            var features = _viewModel.Features;
-            if (features == null)
+            var segments = _viewModel.Segments;
+            if (segments != null && segments.Count > 0)
+            {
+                DrawSegments(segments, opacity, _viewModel.ShowLinePoints);
+            }
+        }
+
+        private void DrawSegments(IList<PathSegment> segments, double opacity, bool showLinePoints)
+        {
+            if (segments == null || segments.Count == 0)
             {
                 return;
             }
 
-            var showLinePoints = _viewModel.ShowLinePoints;
+            var selectedSegment = _viewModel.SelectedSegment;
 
-            foreach (var feature in features)
+            var lineBrush = Brushes.MediumSeaGreen.Clone();
+            lineBrush.Opacity = opacity;
+
+            var lineGroups = segments
+                .Where(segment => segment != null && segment.SegmentType == SegmentType.Line)
+                .GroupBy(segment => segment.LineGroup)
+                .Where(group => group.Count() >= 2);
+
+            foreach (var group in lineGroups)
             {
-                var strokeBrush = feature.IsSelected ? Brushes.DeepSkyBlue : Brushes.OrangeRed;
-                strokeBrush = strokeBrush.Clone();
-                strokeBrush.Opacity = opacity;
-
-                if (feature.Type == PathFeatureType.Line && feature.Points.Count >= 2)
+                var polyline = new Polyline
                 {
-                    var polyline = new Polyline
-                    {
-                        Stroke = strokeBrush,
-                        StrokeThickness = 2,
-                        SnapsToDevicePixels = true
-                    };
+                    Stroke = lineBrush,
+                    StrokeThickness = 2,
+                    SnapsToDevicePixels = true
+                };
 
-                    foreach (var point in feature.Points)
-                    {
-                        var canvasPoint = ToCanvas(point);
-                        polyline.Points.Add(canvasPoint);
-                    }
-
-                    DrawingCanvas.Children.Add(polyline);
+                foreach (var segment in group)
+                {
+                    var canvasPoint = ToCanvas(segment);
+                    polyline.Points.Add(canvasPoint);
                 }
 
-                var showFeaturePoints = feature.Type != PathFeatureType.Line || showLinePoints;
+                DrawingCanvas.Children.Add(polyline);
+            }
 
-                if (!showFeaturePoints)
+            foreach (var segment in segments.Where(segment => segment != null))
+            {
+                var canvasPoint = ToCanvas(segment);
+                var isSelected = ReferenceEquals(segment, selectedSegment);
+                var isLineSegment = segment.SegmentType == SegmentType.Line;
+
+                if (isLineSegment && !showLinePoints)
                 {
                     continue;
                 }
 
-                foreach (var point in feature.Points)
+                var ellipse = new Ellipse
                 {
-                    var canvasPoint = ToCanvas(point);
-                    var ellipse = new Ellipse
-                    {
-                        Width = feature.IsSelected ? 14 : 10,
-                        Height = feature.IsSelected ? 14 : 10,
-                        Stroke = Brushes.Black,
-                        StrokeThickness = 1,
-                        Fill = feature.IsSelected ? Brushes.LightSkyBlue : Brushes.Gold,
-                        Opacity = opacity
-                    };
+                    Width = isSelected ? 14 : 10,
+                    Height = isSelected ? 14 : 10,
+                    Stroke = Brushes.DarkSeaGreen,
+                    StrokeThickness = 1,
+                    Fill = isSelected ? Brushes.LightGreen : Brushes.MediumAquamarine,
+                    Opacity = opacity
+                };
 
-                    Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
-                    Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
-                    DrawingCanvas.Children.Add(ellipse);
-                }
+                Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
+                Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
+                DrawingCanvas.Children.Add(ellipse);
             }
         }
 
-        private Point ToCanvas(PathPoint point)
+        private Point ToCanvas(PathSegment segment)
+        {
+            return ToCanvas(segment.X, segment.Y);
+        }
+
+        private Point ToCanvas(double x, double y)
         {
             var scale = GetScale();
             var origin = GetOrigin(scale);
-            var x = origin.X + point.X * scale;
-            var y = origin.Y + point.Y * scale;
-            return new Point(x, y);
+            var canvasX = origin.X + x * scale;
+            var canvasY = origin.Y + y * scale;
+            return new Point(canvasX, canvasY);
         }
 
         private Point ToModel(Point canvasPoint)
@@ -818,7 +877,7 @@ namespace DispenserEditor.Controls
                 _viewModel?.UpdateMode(mode);
                 if (mode != DrawingMode.Line)
                 {
-                    _activeLineFeature = null;
+                    CompleteLineInput();
                 }
             }
         }
@@ -836,7 +895,7 @@ namespace DispenserEditor.Controls
                 return false;
             }
 
-            _draggingPoint = null;
+            _draggingSegment = null;
             _isDragging = true;
             _dragChanged = false;
             DrawingCanvas.CaptureMouse();
@@ -854,10 +913,10 @@ namespace DispenserEditor.Controls
             switch (_viewModel.CurrentMode)
             {
                 case DrawingMode.Point:
-                    CreatePointFeature(position);
+                    AddPointSegment(position);
                     break;
                 case DrawingMode.Line:
-                    AppendLinePoint(position);
+                    AppendLineSegment(position);
                     break;
                 default:
                     BeginDrag(position);
@@ -865,89 +924,85 @@ namespace DispenserEditor.Controls
             }
         }
 
-        private void CreatePointFeature(Point canvasPosition)
+        private void AddPointSegment(Point canvasPosition)
         {
-            if (_viewModel.Features == null)
+            if (_viewModel.Segments == null)
             {
                 return;
             }
 
             var modelPoint = ToModel(canvasPosition);
-            var feature = new PathFeature
+            var segment = new PathSegment
             {
-                Type = PathFeatureType.Point,
-                Name = $"Point {_viewModel.Features.Count(f => f.Type == PathFeatureType.Point) + 1}"
-            };
-
-            feature.Points.Add(new PathPoint
-            {
+                SegmentType = SegmentType.Point,
                 X = modelPoint.X,
                 Y = modelPoint.Y
-            });
+            };
 
-            _viewModel.Features.Add(feature);
-            _viewModel.SelectedFeature = feature;
-            _viewModel.SelectedPoint = feature.Points.First();
-            _viewModel.SaveSnapshot();
-            _viewModel.StatusMessage = $"Added {feature.Name}.";
+            _viewModel.Segments.Add(segment);
+            _viewModel.SelectedSegment = segment;
+            _viewModel.StatusMessage = $"Added segment {_viewModel.Segments.IndexOf(segment) + 1}.";
             RenderFeatures();
         }
 
-        private void AppendLinePoint(Point canvasPosition)
+        private void AppendLineSegment(Point canvasPosition)
         {
-            if (_viewModel.Features == null)
+            if (_viewModel.Segments == null)
             {
                 return;
             }
 
             var modelPoint = ToModel(canvasPosition);
-            if (_activeLineFeature == null)
+            if (!_activeLineGroup.HasValue)
             {
-                _activeLineFeature = new PathFeature
-                {
-                    Type = PathFeatureType.Line,
-                    Name = $"Line {_viewModel.Features.Count(f => f.Type == PathFeatureType.Line) + 1}"
-                };
-
-                _viewModel.Features.Add(_activeLineFeature);
-                _viewModel.SelectedFeature = _activeLineFeature;
+                _activeLineGroup = GetNextLineGroup();
             }
 
-            _activeLineFeature.Points.Add(new PathPoint
+            var segment = new PathSegment
             {
+                SegmentType = SegmentType.Line,
+                LineGroup = _activeLineGroup.Value,
                 X = modelPoint.X,
                 Y = modelPoint.Y
-            });
+            };
 
-            _viewModel.SelectedPoint = _activeLineFeature.Points.Last();
-            _viewModel.SaveSnapshot();
-            _viewModel.StatusMessage = $"{_activeLineFeature.Name} - Point {_activeLineFeature.Points.Count}";
+            _viewModel.Segments.Add(segment);
+            _viewModel.SelectedSegment = segment;
+            var countInGroup = _viewModel.Segments.Count(s => s != null &&
+                s.SegmentType == SegmentType.Line &&
+                s.LineGroup == _activeLineGroup.Value);
+            _viewModel.StatusMessage = $"Line {_activeLineGroup.Value} - Point {countInGroup}";
             RenderFeatures();
+        }
+
+        private int GetNextLineGroup()
+        {
+            if (_viewModel.Segments == null)
+            {
+                return 1;
+            }
+
+            var maxGroup = _viewModel.Segments
+                .Where(segment => segment != null && segment.SegmentType == SegmentType.Line)
+                .Select(segment => segment.LineGroup)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return maxGroup + 1;
         }
 
         private void BeginDrag(Point canvasPosition)
         {
-            _activeLineFeature = null;
-            _draggingPoint = null;
+            CompleteLineInput();
+            _draggingSegment = null;
             _isDraggingCrosshair = false;
-            PathFeature feature;
-            PathPoint point;
-            if (TryFindPoint(canvasPosition, 12, out feature, out point))
+            if (TryFindSegment(canvasPosition, 12, out var segment))
             {
-                _viewModel.SelectedFeature = feature;
-                _viewModel.SelectedPoint = point;
-                _draggingPoint = point;
+                _viewModel.SelectedSegment = segment;
+                _draggingSegment = segment;
                 _isDragging = true;
                 _dragChanged = false;
                 DrawingCanvas.CaptureMouse();
-            }
-            else
-            {
-                var hitFeature = FindFeature(canvasPosition, 10);
-                if (hitFeature != null)
-                {
-                    _viewModel.SelectedFeature = hitFeature;
-                }
             }
         }
 
@@ -976,18 +1031,17 @@ namespace DispenserEditor.Controls
                 return;
             }
 
-            if (_draggingPoint == null)
+            if (_draggingSegment != null)
             {
+                var modelPoint = ToModel(position);
+                if (Math.Abs(_draggingSegment.X - modelPoint.X) > double.Epsilon ||
+                    Math.Abs(_draggingSegment.Y - modelPoint.Y) > double.Epsilon)
+                {
+                    _draggingSegment.X = modelPoint.X;
+                    _draggingSegment.Y = modelPoint.Y;
+                    _dragChanged = true;
+                }
                 return;
-            }
-
-            var modelPoint = ToModel(position);
-            if (Math.Abs(_draggingPoint.X - modelPoint.X) > double.Epsilon ||
-                Math.Abs(_draggingPoint.Y - modelPoint.Y) > double.Epsilon)
-            {
-                _draggingPoint.X = modelPoint.X;
-                _draggingPoint.Y = modelPoint.Y;
-                _dragChanged = true;
             }
         }
 
@@ -1013,7 +1067,7 @@ namespace DispenserEditor.Controls
                     }
                 }
 
-                _draggingPoint = null;
+                _draggingSegment = null;
                 if (_dragChanged)
                 {
                     _viewModel.SaveSnapshot();
@@ -1024,7 +1078,7 @@ namespace DispenserEditor.Controls
 
         private void OnCanvasRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            _pendingLineCompletion = _viewModel.CurrentMode == DrawingMode.Line && _activeLineFeature != null;
+            _pendingLineCompletion = _viewModel.CurrentMode == DrawingMode.Line && _activeLineGroup.HasValue;
             _isPanning = true;
             _panMoved = false;
             _panStart = e.GetPosition(CanvasHost);
@@ -1053,63 +1107,30 @@ namespace DispenserEditor.Controls
             _panMoved = false;
         }
 
-        private bool TryFindPoint(Point canvasPoint, double radius, out PathFeature feature, out PathPoint point)
+        private bool TryFindSegment(Point canvasPoint, double radius, out PathSegment segment)
         {
-            feature = null;
-            point = null;
-            foreach (var candidateFeature in _viewModel.Features)
+            segment = null;
+            if (_viewModel.Segments == null)
             {
-                foreach (var candidatePoint in candidateFeature.Points)
-                {
-                    var screen = ToCanvas(candidatePoint);
-                    if ((screen - canvasPoint).Length <= radius)
-                    {
-                        feature = candidateFeature;
-                        point = candidatePoint;
-                        return true;
-                    }
-                }
+                return false;
             }
 
-            feature = null;
-            point = null;
-            return false;
-        }
-
-        private PathFeature FindFeature(Point canvasPoint, double threshold)
-        {
-            foreach (var feature in _viewModel.Features)
+            foreach (var candidateSegment in _viewModel.Segments)
             {
-                if (feature.Points.Count == 0)
+                if (candidateSegment == null)
                 {
                     continue;
                 }
 
-                if (feature.Type == PathFeatureType.Point)
+                var screen = ToCanvas(candidateSegment);
+                if ((screen - canvasPoint).Length <= radius)
                 {
-                    var screen = ToCanvas(feature.Points.First());
-                    if ((screen - canvasPoint).Length <= threshold)
-                    {
-                        return feature;
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < feature.Points.Count - 1; i++)
-                    {
-                        var start = feature.Points[i];
-                        var end = feature.Points[i + 1];
-                        var a = ToCanvas(start);
-                        var b = ToCanvas(end);
-                        if (DistanceToSegment(canvasPoint, a, b) <= threshold)
-                        {
-                            return feature;
-                        }
-                    }
+                    segment = candidateSegment;
+                    return true;
                 }
             }
 
-            return null;
+            return false;
         }
 
         private void UpdateMousePositionIndicator(Point canvasPosition)
@@ -1166,22 +1187,6 @@ namespace DispenserEditor.Controls
             MousePositionPopup.Visibility = Visibility.Visible;
         }
 
-        private static double DistanceToSegment(Point p, Point a, Point b)
-        {
-            var ab = b - a;
-            var ap = p - a;
-            var magnitudeSquared = ab.X * ab.X + ab.Y * ab.Y;
-            if (magnitudeSquared < double.Epsilon)
-            {
-                return (p - a).Length;
-            }
-
-            var t = (ap.X * ab.X + ap.Y * ab.Y) / magnitudeSquared;
-            t = Math.Max(0, Math.Min(1, t));
-            var projection = new Point(a.X + ab.X * t, a.Y + ab.Y * t);
-            return (p - projection).Length;
-        }
-
         private void OnLoadImage(object sender, RoutedEventArgs e)
         {
             _viewModel.LoadReferenceImage();
@@ -1209,41 +1214,6 @@ namespace DispenserEditor.Controls
         private void OnExport(object sender, RoutedEventArgs e)
         {
             _viewModel.ExportRecipe();
-        }
-
-        private void OnDeleteFeature(object sender, RoutedEventArgs e)
-        {
-            var target = _viewModel.SelectedFeature;
-            if (target == null || _viewModel.Features == null)
-            {
-                return;
-            }
-
-            if (ReferenceEquals(target, _activeLineFeature))
-            {
-                _activeLineFeature = null;
-            }
-
-            _viewModel.Features.Remove(target);
-            _viewModel.SelectedFeature = _viewModel.Features.FirstOrDefault();
-            _viewModel.SaveSnapshot();
-            _viewModel.StatusMessage = $"Deleted {target.Name}.";
-            RenderFeatures();
-        }
-
-        private void OnClearFeatures(object sender, RoutedEventArgs e)
-        {
-            if (_viewModel.Features == null || !_viewModel.Features.Any())
-            {
-                return;
-            }
-
-            _activeLineFeature = null;
-            _viewModel.Features.Clear();
-            _viewModel.SelectedFeature = null;
-            _viewModel.SaveSnapshot();
-            _viewModel.StatusMessage = "Cleared all features.";
-            RenderFeatures();
         }
 
         private void OnAddItem(object sender, RoutedEventArgs e)
@@ -1299,17 +1269,34 @@ namespace DispenserEditor.Controls
 
         private void CompleteLineInput()
         {
-            if (_viewModel.CurrentMode == DrawingMode.Line && _activeLineFeature != null)
+            if (!_activeLineGroup.HasValue)
             {
-                if (_activeLineFeature.Points.Count < 2)
+                return;
+            }
+
+            var groupId = _activeLineGroup.Value;
+            var segments = _viewModel.Segments?
+                .Where(segment => segment != null && segment.SegmentType == SegmentType.Line && segment.LineGroup == groupId)
+                .ToList();
+
+            if (segments == null || segments.Count == 0)
+            {
+                _activeLineGroup = null;
+                return;
+            }
+
+            if (segments.Count < 2)
+            {
+                foreach (var segment in segments)
                 {
-                    _viewModel.Features.Remove(_activeLineFeature);
-                    _viewModel.SaveSnapshot();
+                    _viewModel.Segments.Remove(segment);
                 }
 
-                _activeLineFeature = null;
-                _viewModel.StatusMessage = "Completed line input.";
+                _viewModel.SaveSnapshot();
             }
+
+            _activeLineGroup = null;
+            _viewModel.StatusMessage = "Completed line input.";
         }
 
         private static bool AreVectorsClose(Vector a, Vector b)
