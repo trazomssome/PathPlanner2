@@ -42,6 +42,7 @@ namespace DispenserEditor.ViewModels
         private string _statusMessage = string.Empty;
         private double _appliedCenterX;
         private double _appliedCenterY;
+        private double _appliedPixelsPerMillimetre = 1.0;
         private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
         private bool _showLinePoints = true;
 
@@ -91,6 +92,7 @@ namespace DispenserEditor.ViewModels
 
                 _appliedCenterX = _selectedItem?.CenterX ?? 0;
                 _appliedCenterY = _selectedItem?.CenterY ?? 0;
+                _appliedPixelsPerMillimetre = _selectedItem?.PixelsPerMillimetre ?? 1.0;
 
                 if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
                 {
@@ -515,6 +517,12 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
+            if (e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
+            {
+                HandlePixelsPerMillimetreChanged();
+                return;
+            }
+
             if (e.PropertyName == nameof(PathRecipeItem.CenterX) || e.PropertyName == nameof(PathRecipeItem.CenterY))
             {
                 _appliedCenterX = SelectedItem.CenterX;
@@ -522,6 +530,69 @@ namespace DispenserEditor.ViewModels
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
             }
+        }
+
+        private void HandlePixelsPerMillimetreChanged()
+        {
+            if (SelectedItem == null)
+            {
+                return;
+            }
+
+            var newValue = SelectedItem.PixelsPerMillimetre;
+            if (newValue <= 0)
+            {
+                _appliedPixelsPerMillimetre = 1.0;
+                return;
+            }
+
+            var previousValue = _appliedPixelsPerMillimetre;
+            if (previousValue <= 0)
+            {
+                previousValue = 1.0;
+            }
+
+            if (Math.Abs(newValue - previousValue) < 0.0001)
+            {
+                _appliedPixelsPerMillimetre = newValue;
+                return;
+            }
+
+            var scaleFactor = newValue / previousValue;
+
+            if (SelectedItem.Segments != null)
+            {
+                foreach (var segment in SelectedItem.Segments)
+                {
+                    segment.X *= scaleFactor;
+                    segment.Y *= scaleFactor;
+                }
+            }
+
+            if (SelectedItem.Features != null)
+            {
+                foreach (var feature in SelectedItem.Features)
+                {
+                    if (feature?.Points == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var point in feature.Points)
+                    {
+                        point.X *= scaleFactor;
+                        point.Y *= scaleFactor;
+                    }
+                }
+            }
+
+            SelectedItem.CenterX *= scaleFactor;
+            SelectedItem.CenterY *= scaleFactor;
+
+            _appliedPixelsPerMillimetre = newValue;
+
+            SaveSnapshot();
+            StatusMessage = $"Pixels/mm updated to {newValue:F3}. Coordinates rescaled.";
         }
 
         private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
