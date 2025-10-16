@@ -10,5 +10,14 @@
         Title="Path Editor"
         MinHeight="600"
         MinWidth="1024">    
-    <controls:PathEditorControl x:Name="Editor" Recipe="{Binding Recipe, Mode=OneWay}" />
+    <TabControl>
+        <TabItem Header="Path Editor" Padding="0">
+            <controls:PathEditorControl x:Name="Editor" />
+        </TabItem>
+        <TabItem Header="Image Viewer" Padding="0">
+            <controls:PathEditorControl x:Name="ImageViewer"
+                                        ShowRightPanel="False"
+                                        Recipe="{Binding Recipe}" />
+        </TabItem>
+    </TabControl>
 </Window>

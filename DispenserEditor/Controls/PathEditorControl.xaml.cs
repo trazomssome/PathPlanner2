@@ -22,6 +22,12 @@ namespace DispenserEditor.Controls
             typeof(PathEditorControl),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnRecipeChanged));
 
+        public static readonly DependencyProperty ShowRightPanelProperty = DependencyProperty.Register(
+            nameof(ShowRightPanel),
+            typeof(bool),
+            typeof(PathEditorControl),
+            new PropertyMetadata(true, OnShowRightPanelChanged));
+
         private readonly PathEditorViewModel _viewModel;
         private PathRecipe _currentRecipe;
         private PathFeature _activeLineFeature = null;
@@ -55,6 +61,12 @@ namespace DispenserEditor.Controls
             set => SetValue(RecipeProperty, value);
         }
 
+        public bool ShowRightPanel
+        {
+            get => (bool)GetValue(ShowRightPanelProperty);
+            set => SetValue(ShowRightPanelProperty, value);
+        }
+
         public PathEditorViewModel ViewModel => _viewModel;
 
         public PathEditorControl()
@@ -73,6 +85,37 @@ namespace DispenserEditor.Controls
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
             SetCurrentValue(RecipeProperty, _viewModel.Recipe);
+
+            UpdateRightPanelVisibility();
+        }
+
+        private static void OnShowRightPanelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            if (d is PathEditorControl control)
+            {
+                control.UpdateRightPanelVisibility();
+            }
+        }
+
+        private void UpdateRightPanelVisibility()
+        {
+            if (RightColumn == null || RightPanel == null)
+            {
+                return;
+            }
+
+            if (ShowRightPanel)
+            {
+                RightColumn.Width = new GridLength(3, GridUnitType.Star);
+                RightColumn.MinWidth = 300;
+                RightPanel.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                RightColumn.Width = new GridLength(0, GridUnitType.Pixel);
+                RightColumn.MinWidth = 0;
+                RightPanel.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void RequestRenderFeatures()
@@ -248,6 +291,7 @@ namespace DispenserEditor.Controls
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             RequestRenderFeatures();
+            UpdateRightPanelVisibility();
         }
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)

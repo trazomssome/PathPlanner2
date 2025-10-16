@@ -11,8 +11,8 @@
              MinWidth="1024">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="7*" />
-            <ColumnDefinition Width="3*" MinWidth="300" />
+            <ColumnDefinition x:Name="LeftColumn" Width="7*" />
+            <ColumnDefinition x:Name="RightColumn" Width="3*" MinWidth="300" />
         </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
@@ -275,7 +275,7 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="1" Grid.Column="1" Margin="8" DataContext="{Binding}">
+        <Grid x:Name="RightPanel" Grid.Row="1" Grid.Column="1" Margin="8" DataContext="{Binding}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
