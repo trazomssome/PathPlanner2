@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -203,9 +204,14 @@ namespace DispenserEditor.Controls
 
             item.PropertyChanged += OnItemPropertyChanged;
             item.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            item.Segments.CollectionChanged += OnSegmentsCollectionChanged;
             foreach (var feature in item.Features)
             {
                 AttachFeatureHandlers(feature);
+            }
+            foreach (var segment in item.Segments)
+            {
+                segment.PropertyChanged += OnSegmentPropertyChanged;
             }
         }
 
@@ -218,9 +224,14 @@ namespace DispenserEditor.Controls
 
             item.PropertyChanged -= OnItemPropertyChanged;
             item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            item.Segments.CollectionChanged -= OnSegmentsCollectionChanged;
             foreach (var feature in item.Features)
             {
                 DetachFeatureHandlers(feature);
+            }
+            foreach (var segment in item.Segments)
+            {
+                segment.PropertyChanged -= OnSegmentPropertyChanged;
             }
         }
 
@@ -347,7 +358,57 @@ namespace DispenserEditor.Controls
             RequestRenderFeatures();
         }
 
+        private void OnSegmentsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (PathSegment segment in e.OldItems)
+                {
+                    segment.PropertyChanged -= OnSegmentPropertyChanged;
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathSegment segment in e.NewItems)
+                {
+                    segment.PropertyChanged += OnSegmentPropertyChanged;
+                }
+            }
+
+            RequestRenderFeatures();
+
+            if (e.Action == NotifyCollectionChangedAction.Add ||
+                e.Action == NotifyCollectionChangedAction.Remove ||
+                e.Action == NotifyCollectionChangedAction.Replace ||
+                e.Action == NotifyCollectionChangedAction.Reset)
+            {
+                _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            RequestRenderFeatures();
+        }
+
         private void OnFeatureGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                _viewModel.SaveSnapshot();
+            }
+        }
+
+        private void OnSegmentGridRowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
             if (e.EditAction == DataGridEditAction.Commit)
             {
@@ -512,6 +573,12 @@ namespace DispenserEditor.Controls
 
             DrawCrosshair(origin);
 
+            var segments = _viewModel.Segments;
+            if (segments != null)
+            {
+                DrawSegments(segments, opacity);
+            }
+
             var features = _viewModel.Features;
             if (features == null)
             {
@@ -571,12 +638,102 @@ namespace DispenserEditor.Controls
             }
         }
 
+        private void DrawSegments(IEnumerable<PathSegment> segments, double opacity)
+        {
+            if (segments == null)
+            {
+                return;
+            }
+
+            var segmentList = segments.ToList();
+            if (segmentList.Count == 0)
+            {
+                return;
+            }
+
+            var lineGroups = segmentList
+                .Select((segment, index) => new { segment, index })
+                .Where(x => x.segment.SegmentType == SegmentType.Line)
+                .GroupBy(x => x.segment.LineGroup)
+                .ToList();
+
+            foreach (var group in lineGroups)
+            {
+                var ordered = group.OrderBy(x => x.index).Select(x => x.segment).ToList();
+                if (ordered.Count < 2)
+                {
+                    continue;
+                }
+
+                var strokeBrush = Brushes.MediumPurple.Clone();
+                strokeBrush.Opacity = opacity;
+
+                var polyline = new Polyline
+                {
+                    Stroke = strokeBrush,
+                    StrokeThickness = 2,
+                    SnapsToDevicePixels = true
+                };
+
+                foreach (var segment in ordered)
+                {
+                    polyline.Points.Add(ToCanvas(segment));
+                }
+
+                DrawingCanvas.Children.Add(polyline);
+            }
+
+            var lineCounts = lineGroups.ToDictionary(g => g.Key, g => g.Count());
+
+            foreach (var segment in segmentList)
+            {
+                var drawAsPoint = segment.SegmentType == SegmentType.Point;
+
+                if (!drawAsPoint && segment.SegmentType == SegmentType.Line)
+                {
+                    var groupCount = lineCounts.TryGetValue(segment.LineGroup, out var count) ? count : 0;
+                    drawAsPoint = groupCount < 2;
+                }
+
+                if (!drawAsPoint)
+                {
+                    continue;
+                }
+
+                var canvasPoint = ToCanvas(segment);
+                var fillBrush = (segment.OnDispensing ? Brushes.Gold : Brushes.LightGray).Clone();
+                fillBrush.Opacity = opacity;
+
+                var ellipse = new Ellipse
+                {
+                    Width = 10,
+                    Height = 10,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 1,
+                    Fill = fillBrush
+                };
+
+                Canvas.SetLeft(ellipse, canvasPoint.X - ellipse.Width / 2);
+                Canvas.SetTop(ellipse, canvasPoint.Y - ellipse.Height / 2);
+                DrawingCanvas.Children.Add(ellipse);
+            }
+        }
+
         private Point ToCanvas(PathPoint point)
         {
             var scale = GetScale();
             var origin = GetOrigin(scale);
             var x = origin.X + point.X * scale;
             var y = origin.Y + point.Y * scale;
+            return new Point(x, y);
+        }
+
+        private Point ToCanvas(PathSegment segment)
+        {
+            var scale = GetScale();
+            var origin = GetOrigin(scale);
+            var x = origin.X + segment.X * scale;
+            var y = origin.Y + segment.Y * scale;
             return new Point(x, y);
         }
 

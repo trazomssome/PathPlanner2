@@ -93,6 +93,7 @@ namespace DispenserEditor.ViewModels
 
                 RaisePropertyChanged(nameof(SelectedItem));
                 RaisePropertyChanged(nameof(Features));
+                RaisePropertyChanged(nameof(Segments));
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
 
@@ -102,6 +103,8 @@ namespace DispenserEditor.ViewModels
         }
 
         public ObservableCollection<PathFeature> Features => SelectedItem?.Features;
+
+        public ObservableCollection<PathSegment> Segments => SelectedItem?.Segments;
 
         public ObservableCollection<FeatureListEntry> FeatureEntries { get; }
 
@@ -408,7 +411,7 @@ namespace DispenserEditor.ViewModels
 
         public void ShiftAllPoints(double offsetX, double offsetY)
         {
-            if (Features == null)
+            if ((Features == null || Features.Count == 0) && (Segments == null || Segments.Count == 0))
             {
                 return;
             }
@@ -418,12 +421,24 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
-            foreach (var feature in Features)
+            if (Features != null)
             {
-                foreach (var point in feature.Points)
+                foreach (var feature in Features)
                 {
-                    point.X += offsetX;
-                    point.Y += offsetY;
+                    foreach (var point in feature.Points)
+                    {
+                        point.X += offsetX;
+                        point.Y += offsetY;
+                    }
+                }
+            }
+
+            if (Segments != null)
+            {
+                foreach (var segment in Segments)
+                {
+                    segment.X += offsetX;
+                    segment.Y += offsetY;
                 }
             }
         }
@@ -502,9 +517,14 @@ namespace DispenserEditor.ViewModels
 
             item.PropertyChanged += OnItemPropertyChanged;
             item.Features.CollectionChanged += OnFeaturesCollectionChanged;
+            item.Segments.CollectionChanged += OnSegmentsCollectionChanged;
             foreach (var feature in item.Features)
             {
                 AttachFeature(feature);
+            }
+            foreach (var segment in item.Segments)
+            {
+                AttachSegment(segment);
             }
         }
 
@@ -517,9 +537,14 @@ namespace DispenserEditor.ViewModels
 
             item.PropertyChanged -= OnItemPropertyChanged;
             item.Features.CollectionChanged -= OnFeaturesCollectionChanged;
+            item.Segments.CollectionChanged -= OnSegmentsCollectionChanged;
             foreach (var feature in item.Features)
             {
                 DetachFeature(feature);
+            }
+            foreach (var segment in item.Segments)
+            {
+                DetachSegment(segment);
             }
         }
 
@@ -541,6 +566,26 @@ namespace DispenserEditor.ViewModels
             {
                 point.PropertyChanged -= OnPointPropertyChanged;
             }
+        }
+
+        private void AttachSegment(PathSegment segment)
+        {
+            if (segment == null)
+            {
+                return;
+            }
+
+            segment.PropertyChanged += OnSegmentPropertyChanged;
+        }
+
+        private void DetachSegment(PathSegment segment)
+        {
+            if (segment == null)
+            {
+                return;
+            }
+
+            segment.PropertyChanged -= OnSegmentPropertyChanged;
         }
 
         private void OnItemPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -595,6 +640,7 @@ namespace DispenserEditor.ViewModels
             }
 
             RaisePropertyChanged(nameof(Items));
+            RaisePropertyChanged(nameof(Segments));
         }
 
         private void OnFeaturesCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -651,6 +697,43 @@ namespace DispenserEditor.ViewModels
         private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             UpdateFeatureEntries();
+        }
+
+        private void OnSegmentsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
+            {
+                foreach (PathSegment segment in e.OldItems)
+                {
+                    DetachSegment(segment);
+                }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (PathSegment segment in e.NewItems)
+                {
+                    AttachSegment(segment);
+                }
+            }
+
+            if (ReferenceEquals(sender, SelectedItem?.Segments))
+            {
+                RaisePropertyChanged(nameof(Segments));
+            }
+        }
+
+        private void OnSegmentPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (SelectedItem?.Segments == null)
+            {
+                return;
+            }
+
+            if (sender is PathSegment segment && SelectedItem.Segments.Contains(segment))
+            {
+                RaisePropertyChanged(nameof(Segments));
+            }
         }
 
         private void RestoreFromJson(string json)
@@ -718,6 +801,7 @@ namespace DispenserEditor.ViewModels
             StatusMessage = "Recipe restored";
             RaisePropertyChanged(nameof(Items));
             RaisePropertyChanged(nameof(Features));
+            RaisePropertyChanged(nameof(Segments));
             UpdateFeatureEntries();
         }
 
