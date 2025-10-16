@@ -13,6 +13,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using DispenserEditor.Models;
 using DispenserEditor.ViewModels;
+using PathSegment = DispenserEditor.Models.PathSegment;
 
 namespace DispenserEditor.Controls
 {
@@ -1218,12 +1219,12 @@ namespace DispenserEditor.Controls
 
             if (_draggingSegment != null)
             {
-                var modelPoint = ToModel(position);
-                if (Math.Abs(_draggingSegment.X - modelPoint.X) > double.Epsilon ||
-                    Math.Abs(_draggingSegment.Y - modelPoint.Y) > double.Epsilon)
+                var modelPointNonDragging = ToModel(position);
+                if (Math.Abs(_draggingSegment.X - modelPointNonDragging.X) > double.Epsilon ||
+                    Math.Abs(_draggingSegment.Y - modelPointNonDragging.Y) > double.Epsilon)
                 {
-                    _draggingSegment.X = modelPoint.X;
-                    _draggingSegment.Y = modelPoint.Y;
+                    _draggingSegment.X = modelPointNonDragging.X;
+                    _draggingSegment.Y = modelPointNonDragging.Y;
                     _dragChanged = true;
                 }
                 return;
