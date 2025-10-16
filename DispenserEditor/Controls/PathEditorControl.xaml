@@ -232,7 +232,7 @@
             <Slider Minimum="0" Maximum="1" Value="{Binding SelectedItem.OverlayOpacity, Mode=TwoWay}" />
             <Button Click="OnResetZoom" Margin="8,0,0,0">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <fa:IconBlock Icon="MagnifyingGlassMinus" Margin="0,0,6,0" />
+                    <fa:IconBlock Icon="MagnifyingGlass" Margin="0,0,6,0" />
                     <TextBlock Text="Reset Zoom" Margin="0" />
                 </StackPanel>
             </Button>
