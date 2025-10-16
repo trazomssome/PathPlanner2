@@ -47,6 +47,7 @@ namespace DispenserEditor.ViewModels
         private double _appliedCenterY;
         private CrosshairMoveMode _crosshairMode = CrosshairMoveMode.KeepPointsFixed;
         private bool _showLinePoints = true;
+        private double _appliedPixelsPerMillimetre = 1.0;
 
         public PathEditorViewModel()
         {
@@ -85,6 +86,7 @@ namespace DispenserEditor.ViewModels
 
                 _appliedCenterX = _selectedItem?.CenterX ?? 0;
                 _appliedCenterY = _selectedItem?.CenterY ?? 0;
+                _appliedPixelsPerMillimetre = Math.Max(_selectedItem?.PixelsPerMillimetre ?? 1.0, 0.0001);
 
                 if (Recipe != null && !ReferenceEquals(Recipe.SelectedItem, value))
                 {
@@ -557,11 +559,63 @@ namespace DispenserEditor.ViewModels
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
             }
-            else if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity) ||
-                     e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
+            else if (e.PropertyName == nameof(PathRecipeItem.OverlayOpacity))
             {
                 UpdateFeatureEntries();
             }
+            else if (e.PropertyName == nameof(PathRecipeItem.PixelsPerMillimetre))
+            {
+                ApplyPixelsPerMillimetreChange();
+                UpdateFeatureEntries();
+            }
+        }
+
+        private void ApplyPixelsPerMillimetreChange()
+        {
+            if (SelectedItem == null)
+            {
+                _appliedPixelsPerMillimetre = 1.0;
+                return;
+            }
+
+            var newValue = Math.Max(SelectedItem.PixelsPerMillimetre, 0.0001);
+            var previousValue = Math.Max(_appliedPixelsPerMillimetre, 0.0001);
+
+            if (Math.Abs(newValue - previousValue) < double.Epsilon)
+            {
+                return;
+            }
+
+            var scaleFactor = previousValue / newValue;
+            if (double.IsNaN(scaleFactor) || double.IsInfinity(scaleFactor))
+            {
+                return;
+            }
+
+            var features = SelectedItem.Features;
+            if (features != null)
+            {
+                foreach (var feature in features)
+                {
+                    foreach (var point in feature.Points)
+                    {
+                        point.X = point.X * scaleFactor;
+                        point.Y = point.Y * scaleFactor;
+                    }
+                }
+            }
+
+            SelectedItem.CenterX = SelectedItem.CenterX * scaleFactor;
+            SelectedItem.CenterY = SelectedItem.CenterY * scaleFactor;
+
+            _appliedCenterX = SelectedItem.CenterX;
+            _appliedCenterY = SelectedItem.CenterY;
+            RaisePropertyChanged(nameof(AppliedCenterX));
+            RaisePropertyChanged(nameof(AppliedCenterY));
+
+            _appliedPixelsPerMillimetre = newValue;
+            SaveSnapshot();
+            StatusMessage = $"Updated coordinates for {SelectedItem.Name} to {newValue:F3} pixels/mm.";
         }
 
         private void OnItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -710,6 +764,7 @@ namespace DispenserEditor.ViewModels
             {
                 _appliedCenterX = SelectedItem.CenterX;
                 _appliedCenterY = SelectedItem.CenterY;
+                _appliedPixelsPerMillimetre = Math.Max(SelectedItem.PixelsPerMillimetre, 0.0001);
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
             }
