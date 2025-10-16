@@ -514,7 +514,7 @@ namespace DispenserEditor.ViewModels
                 return;
             }
 
-            var scaleFactor = previousValue / newValue;
+            var scaleFactor = newValue / previousValue;
 
             if (SelectedItem.Segments != null)
             {
