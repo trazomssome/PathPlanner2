@@ -36,6 +36,7 @@ namespace DispenserEditor.ViewModels
         private PathFeature _selectedFeature = null;
         private PathPoint _selectedPoint = null;
         private FeatureListEntry _selectedEntry = null;
+        private PathSegment _selectedSegment = null;
         private bool _synchronizingSelection;
         private bool _isUpdatingFeatureEntries;
         private DrawingMode _currentMode = DrawingMode.Move;
@@ -65,6 +66,7 @@ namespace DispenserEditor.ViewModels
                     RaisePropertyChanged();
                     RaisePropertyChanged(nameof(Items));
                     RaisePropertyChanged(nameof(Features));
+                    RaisePropertyChanged(nameof(Segments));
                 }
             }
         }
@@ -81,7 +83,17 @@ namespace DispenserEditor.ViewModels
                     return;
                 }
 
+                if (_selectedItem != null)
+                {
+                    _selectedItem.Segments.CollectionChanged -= OnSelectedItemSegmentsChanged;
+                }
+
                 _selectedItem = value;
+
+                if (_selectedItem != null)
+                {
+                    _selectedItem.Segments.CollectionChanged += OnSelectedItemSegmentsChanged;
+                }
 
                 _appliedCenterX = _selectedItem?.CenterX ?? 0;
                 _appliedCenterY = _selectedItem?.CenterY ?? 0;
@@ -93,15 +105,19 @@ namespace DispenserEditor.ViewModels
 
                 RaisePropertyChanged(nameof(SelectedItem));
                 RaisePropertyChanged(nameof(Features));
+                RaisePropertyChanged(nameof(Segments));
                 RaisePropertyChanged(nameof(AppliedCenterX));
                 RaisePropertyChanged(nameof(AppliedCenterY));
 
                 UpdateFeatureEntries();
                 SelectedFeature = SelectedItem?.Features.FirstOrDefault();
+                SelectedSegment = SelectedItem?.Segments.FirstOrDefault();
             }
         }
 
         public ObservableCollection<PathFeature> Features => SelectedItem?.Features;
+
+        public ObservableCollection<PathSegment> Segments => SelectedItem?.Segments;
 
         public ObservableCollection<FeatureListEntry> FeatureEntries { get; }
 
@@ -217,6 +233,12 @@ namespace DispenserEditor.ViewModels
                     SynchronizeSelectedEntry(value);
                 }
             }
+        }
+
+        public PathSegment SelectedSegment
+        {
+            get => _selectedSegment;
+            set => SetProperty(ref _selectedSegment, value);
         }
 
         public PathPoint SelectedPoint
@@ -741,6 +763,33 @@ namespace DispenserEditor.ViewModels
             else
             {
                 SelectedPoint = null;
+            }
+        }
+
+        private void OnSelectedItemSegmentsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, _selectedItem?.Segments))
+            {
+                return;
+            }
+
+            RaisePropertyChanged(nameof(Segments));
+
+            if (_selectedItem == null)
+            {
+                SelectedSegment = null;
+                return;
+            }
+
+            if (!_selectedItem.Segments.Any())
+            {
+                SelectedSegment = null;
+                return;
+            }
+
+            if (SelectedSegment == null || !_selectedItem.Segments.Contains(SelectedSegment))
+            {
+                SelectedSegment = _selectedItem.Segments.FirstOrDefault();
             }
         }
 
